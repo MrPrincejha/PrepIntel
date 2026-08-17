@@ -1,0 +1,335 @@
+<USER_REQUEST>
+/ approve # PrepIntel — Master Build Prompt (Phased Engineering Spec)
+
+
+
+## 0. Product Snapshot
+
+**Name:** PrepIntel
+**Tagline:** "Know What Companies Ask. Prepare Smarter."
+**One-liner:** A placement-intelligence platform that turns noisy OA/interview reports into uncertainty-aware, personalized question recommendations, using the Bayesian scoring engine defined in the math spec.
+
+**Reference design (from screenshot):**
+- Eye logo (gradient cyan→violet, iris-in-eye mark), wordmark "Prep**Intel**" (Prep in white, Intel in gradient)
+- Landing page: dark navy/black background (`#05060A`–`#0B0D14` range), large hero headline, gradient CTA button (violet→cyan), trust logos row, 4 feature bullets with icon chips, floating 3D "eye + bar chart" hero graphic with orbiting pill labels ("Real Data", "Smart Analysis", "Crack Placements")
+- App shell: fixed left sidebar (icon+label nav: Overview, Analytics, Questions, Reports, Roadmap, Bookmarks, Progress), top bar with global search + Company/Role/Year dropdown selectors
+- Dashboard: topic-frequency stat cards (icon chip, topic name, %, trend arrow ↑/↓ in green/red), line chart card ("Topic Trend — Last 12 Months") with multi-series colored lines, donut chart card ("Difficulty Distribution"), "Top Recommended Questions" ranked list with tag pills + score badge, "N-Day Preparation Plan" week-by-week progress bars, a "Confidence Score" badge top-right (colored dot + X/100), and a Pro-plan upsell card in sidebar footer with user profile chip
+- Visual language: glassmorphic cards (subtle border, low-opacity fill, soft shadow), rounded-2xl corners, gradient accents used sparingly (CTA, logo, active nav item, headline highlight word), green/amber/red used only for semantic states (up/down/difficulty), everything else neutral dark/gray/white
+
+This is the target aesthetic for **every** screen you build in every phase — dense, data-forward, "command-center" styling, consistent with the rest of Prince's project portfolio.
+
+**Stack (matches CodePilot precedent — reuse for consistency and free-tier hosting):**
+- Frontend: Next.js (App Router) + TypeScript + Tailwind CSS + shadcn/ui + Framer Motion + Recharts (or visx) for charts
+- Backend: FastAPI (Python) for the math/scoring engine + ingestion pipeline; Next.js API routes / route handlers for thin CRUD where FastAPI isn't needed
+- DB: PostgreSQL (Supabase) — relational core + Row Level Security for multi-user data (bookmarks, progress, skill profile)
+- Cache/Queue: Upstash Redis (caching precomputed analytics, rate limiting) + a background job runner (Celery, or simple cron via Railway/Render if avoiding Celery for MVP)
+- Auth: Supabase Auth (email + OAuth)
+- Hosting: Vercel (frontend) + Railway (FastAPI worker + Postgres if not using Supabase) — zero-cost tier via GitHub Student Pack, same as CodePilot
+- Charts: Recharts for line/donut (matches reference image chart style)
+
+---
+
+## Phase 1 — Design System & Static Shell (Frontend-only, no data)
+
+**Goal:** Get the exact look of the reference screenshot working with dummy/hardcoded data before any backend exists.
+
+**Prompt to use:**
+
+```
+Build a Next.js + TypeScript + Tailwind + shadcn/ui project called "PrepIntel".
+
+Create a design system matching this spec exactly:
+- Background: near-black navy (#05060A to #0B0D14 gradient), subtle radial glow behind hero content
+- Primary gradient: cyan (#22D3EE / #38BDF8) → violet (#8B5CF6 / #A78BFA), used for: logo mark, active states, primary CTA buttons, headline accent word, chart accent lines
+- Card style: bg-white/5, border border-white/10, rounded-2xl, backdrop-blur, subtle shadow-lg on hover lift
+- Semantic colors: green (#22C55E) for positive/up-trend, red (#EF4444) for negative/down-trend, amber (#F59E0B) for medium/warning, all used ONLY for status indicators, never as decoration
+- Typography: Inter or Geist, headline weight 700-800, body weight 400-500, generous letter-spacing on labels/eyebrow text (uppercase, tracking-wide, text-xs)
+- Icon set: lucide-react
+
+Build these components as reusable, composable pieces:
+1. <Logo /> — eye mark (SVG, gradient stroke) + "Prep" + gradient "Intel" wordmark, size variants (sm for sidebar, lg for landing)
+2. <GradientButton /> — pill-shaped, gradient fill, hover glow, with optional icon-right (arrow)
+3. <StatCard /> — icon chip (colored bg tint matching an accent color), title, big %, trend badge (↑/↓ + green/red text)
+4. <GlassPanel /> — the base card wrapper used everywhere (dashboard sections, sidebar, landing feature blocks)
+5. <ConfidenceBadge /> — dot + label ("High"/"Medium"/"Low") + "X/100" score, colored by tier
+6. <NavSidebar /> — fixed left sidebar, icon+label items, active item has gradient-tinted background + left accent bar, collapsible on mobile
+7. <TopBar /> — search input (icon-left, rounded-full, subtle border), 3 dropdown selectors (Company / Role / Year) styled as pill buttons with chevron
+8. <TagPill /> — small rounded tag used for topic labels on question rows (e.g. "DP", "1D DP", "Greedy")
+
+Build the LANDING PAGE (marketing, logged-out) pixel-matching this layout:
+- Left half: eyebrow pill "PLACEMENT INTELLIGENCE PLATFORM", huge headline "Know What Companies Ask. Prepare Smarter." (last line gradient), subhead paragraph, 4-item feature list (icon chip + bold title + gray description) for: Company-Wise Insights, AI-Powered Extraction, Smart Recommendations, Track. Improve. Crack., gradient CTA button "Start Preparing Smarter →", trust bar "Trusted by thousands of aspiring software engineers" + grayscale-ish company wordmarks (Google, Microsoft, Amazon, Adobe, Flipkart, PayPal)
+- Right half: a live-looking DASHBOARD PREVIEW card (same component as the real dashboard in Phase 3, just fed static demo data) tilted/floating with a glow, PLUS a decorative 3D eye/bar-chart illustration below it with 3 floating pill labels ("Real Data", "Smart Analysis", "Crack Placements") — use an SVG illustration or Framer Motion floating shapes, do not use a raster image
+- Fully responsive: stack to single column on mobile, sidebar collapses to a bottom tab bar or hamburger drawer
+
+Use dummy hardcoded data for now. No backend calls.
+```
+
+**Definition of Done:** Landing page and dashboard shell visually match the reference screenshot at desktop + mobile widths, using placeholder data only.
+
+---
+
+## Phase 2 — Data Model & Ingestion Schema
+
+**Goal:** Design the Postgres schema that the math engine (Phase 4) will read/write, and the ingestion pipeline that turns raw reports into structured observations.
+
+**Prompt to use:**
+
+```
+Design a PostgreSQL schema (with Supabase RLS policies) for PrepIntel covering:
+
+Core entities:
+- companies (id, name, slug, logo_url, category)
+- roles (id, name, slug) e.g. "SDE Intern", "SDE-1"
+- recruitment_cycles (id, year, label)
+- rounds (id, name) e.g. "OA", "Technical 1", "HR"
+- topics (id, name, slug, parent_topic_id nullable) — supports the hierarchy from the math spec (DP -> 1D DP -> Coin Change)
+- questions (id, canonical_title, slug, topics[] via join table, difficulty_label, estimated_time_minutes, external_links jsonb)
+
+Observation pipeline:
+- raw_reports (id, source_type enum['user_submission','scraped_public','screenshot_ocr','manual_admin'], source_url, raw_text, submitted_by_user_id nullable, company_id, role_id, round_id, cycle_id, submitted_at, status enum['pending','processed','rejected','duplicate'])
+- report_topic_observations (id, raw_report_id, topic_id, present boolean, extraction_confidence float) — this is the X_ij matrix from the math spec, one row per (report, topic)
+- report_question_observations (id, raw_report_id, question_id nullable, question_text_raw, matched_confidence float) — for direct-evidence tracking
+- source_reliability_scores (source_type, reliability_weight float, last_calibrated_at) — matches w_s(i) in the spec
+- duplicate_clusters (id, cluster_method, created_at) + raw_report_id FK — for the independence adjustment (I_i) from section 13
+
+Precomputed analytics (written by the batch job in Phase 4, read by the API):
+- topic_scores (company_id, role_id, round_id, cycle_id, topic_id, raw_count, weighted_count, raw_frequency, weighted_probability, posterior_mean, credible_interval_low, credible_interval_high, effective_sample_size, recency_score, trend_score, confidence_score, generated_at) — exactly matching section 32 of the math spec
+- question_scores (company_id, role_id, cycle_id, question_id, topic_score, pattern_score, direct_evidence_score, difficulty_score, recency_score, diversity_score, final_recommendation_score, generated_at)
+- difficulty_distributions (company_id, role_id, round_id, cycle_id, easy_pct, medium_pct, hard_pct)
+
+User-facing state:
+- user_skill_profile (user_id, topic_id, skill_level enum['weak','medium','strong'], updated_at)
+- bookmarks (user_id, question_id, created_at)
+- user_progress (user_id, question_id, status enum['not_started','attempted','solved'], updated_at)
+- prep_plans (user_id, company_id, role_id, total_days, generated_at) + prep_plan_days (plan_id, day_number, topics[], target_completion_pct)
+
+Write this as a single SQL migration file with proper foreign keys, indexes on the (company_id, role_id, round_id, cycle_id) lookup pattern used constantly by the dashboard, and RLS policies so users only see their own bookmarks/progress/skill_profile/prep_plans but can read all topic_scores/question_scores (public analytics).
+```
+
+**Definition of Done:** Migration runs clean on a fresh Supabase project; you can manually insert a raw_report + observations and query them back.
+
+---
+
+## Phase 3 — Auth + App Shell Wired to Real Selectors
+
+**Goal:** Real login, and the Company/Role/Year top-bar selectors actually drive routing/query state (even though analytics are still dummy).
+
+**Prompt to use:**
+
+```
+Wire up Supabase Auth (email + Google OAuth) to the Next.js app from Phase 1.
+
+Make the TopBar's Company / Role / Year dropdowns real:
+- Fetch companies/roles/cycles from the DB (Phase 2 tables)
+- Selecting a combination updates the URL as query params (?company=amazon&role=sde-intern&cycle=2026) so dashboard state is shareable/bookmarkable
+- Persist the last-used selection per user (localStorage fallback if logged out)
+- Global search in the top bar does fuzzy-match against companies + topics + question titles (client-side filter is fine for MVP; move to Postgres full-text or a search index later)
+
+Sidebar nav routes: /dashboard (Overview), /analytics, /questions, /reports, /roadmap, /bookmarks, /progress — stub each page with a header + "Coming in Phase X" placeholder except Overview which stays on Phase 1's static dashboard for now.
+
+Add a user profile chip in the sidebar footer (avatar, name, "View Profile") replacing the static "Aarav Singh" placeholder, pulling from the authenticated session.
+```
+
+**Definition of Done:** A user can sign up, log in, pick Company/Role/Year, and the choice persists across reload and is reflected in the URL.
+
+---
+
+## Phase 4 — MVP Math Engine (Backend, FastAPI)
+
+**Goal:** Implement exactly the "MVP" checklist from the math spec (section 34) as a batch job, not real-time computation.
+
+**Prompt to use:**
+
+```
+Build a FastAPI service ("prepintel-engine") that runs as a scheduled batch job (cron or Celery beat, every N hours) implementing the MVP math pipeline from the attached spec:
+
+1. Ingest new raw_reports with status='pending' -> run topic extraction (start with keyword/regex matching against topics.slug + synonyms table; leave an LLM-based extractor as a swappable interface for Phase 2/3) -> write report_topic_observations -> mark report processed
+
+2. Deduplication (section 12-13): cluster raw_reports by (company_id, role_id, round_id, cycle_id) + text similarity (start with a simple trigram/cosine similarity on raw_text via pg_trgm; assign independence_factor I_i: 1.0 unclustered, 0.3 likely-duplicate, 0.0 exact-duplicate)
+
+3. Recency weighting (section 6): w_r(t) = exp(-lambda * age_in_days/365), lambda configurable via env var, default such that a 1-year-old report ≈ 0.70 weight (solve for lambda from that anchor)
+
+4. Source weighting (section 7): pull from source_reliability_scores table
+
+5. Combined weight (section 8): w_i = w_s(i) * w_r(t_i) * I_i
+
+6. Weighted frequency + Beta-Binomial posterior (section 9): for each (company, role, round, cycle, topic), compute weighted successes/failures, posterior = Beta(alpha_prior + s, beta_prior + f) with alpha_prior=beta_prior=1 (uniform prior) as default, expose as configurable
+
+7. Effective sample size (section 11): N_eff = (sum w_i)^2 / sum(w_i^2)
+
+8. Confidence score: derive a 0-100 confidence_score from N_eff (e.g. logistic/sigmoid mapping so N_eff=1 -> low, N_eff>=15 -> high; make the mapping function a named, testable unit) — this feeds the <ConfidenceBadge /> in the UI
+
+9. Trend score (section 17-18): compute EMA over monthly buckets, trend_score = p_recent - p_historical, classify as Increasing/Stable/Decreasing with a configurable threshold
+
+10. Write all results to topic_scores table per section 32's exact column list
+
+11. Question scoring (sections 23-25, MVP subset only — skip embeddings for now): 
+    Score(q) = w1*topic_score + w2*pattern_score(keyword-overlap only, not embeddings) + w3*recency + w4*difficulty_fit + w5*direct_evidence_score
+    normalize to 0-100, write to question_scores
+
+12. Difficulty distribution (section 20): simple weighted proportion of easy/medium/hard per (company,role,round,cycle), write to difficulty_distributions
+
+Expose read-only REST endpoints for the frontend:
+GET /api/topics?company=&role=&cycle=  -> topic_scores rows, sorted by weighted_probability desc
+GET /api/questions?company=&role=&cycle=&limit=  -> question_scores joined with questions, sorted by final_recommendation_score desc
+GET /api/difficulty?company=&role=&round=&cycle=
+GET /api/trend?company=&role=&topic=&months=12  -> monthly time series for the chart
+
+Every response must include the underlying components (not just the final number) so the frontend can render the "Why?" breakdown from section 31 later.
+
+Write this with clear separation: ingestion.py, weighting.py, bayesian.py, dedup.py, scoring.py, trend.py — each independently unit-testable with synthetic report data.
+```
+
+**Definition of Done:** Seed 50-100 synthetic raw_reports across 2-3 companies/topics, run the batch job, and confirm topic_scores/question_scores populate with sane numbers (spot-check the Beta-Binomial math against the worked examples in the spec, e.g. section 10's "2/2 reports -> high estimate, low confidence").
+
+---
+
+## Phase 5 — Live Dashboard (Overview tab)
+
+**Goal:** Replace Phase 1's dummy dashboard with real data from Phase 4's API, matching the reference screenshot exactly.
+
+**Prompt to use:**
+
+```
+Wire the Overview dashboard to the FastAPI endpoints from Phase 4:
+
+- Topic stat cards row: one <StatCard> per top topic (by weighted_probability), showing weighted_probability as the %, trend_score as the ↑/↓ badge (green if Increasing, red if Decreasing, gray/flat icon if Stable), icon+color per topic assigned from a fixed topic->icon/color map (Arrays=blue, DP=violet, Greedy=amber, Graphs=fuchsia, Hashing=green, Binary Search=cyan — matching the reference image's palette)
+
+- "Topic Trend — Last 12 Months" line chart (Recharts): fetch /api/trend for the top 5 topics, render as multi-series line chart with a time-range dropdown (default 12 Months), colors matching the stat card colors, legend below
+
+- "Difficulty Distribution" donut chart (Recharts PieChart, innerRadius for donut): fetch /api/difficulty, center label shows the dominant category + %, side legend lists Easy/Medium/Hard with colored dots + %
+
+- "Top Recommended Questions" panel: fetch /api/questions?limit=5, render ranked list (1-5), each row: question title, topic TagPills (top 2 contributing topics), final_recommendation_score as a badge on the right (colored by score tier: 90+ = bright, 70-89 = medium, <70 = muted), "View Full List →" link to /questions
+
+- "Confidence Score" badge top-right of the header: aggregate confidence_score across the visible topic set (e.g. mean or min), render via <ConfidenceBadge />
+
+- "N-Day Preparation Plan" panel stays static/placeholder until Phase 8, but wire the header (Company · Role · Year) to the real selected values
+
+Handle empty-data states gracefully (a company/role/cycle combo with zero reports should show "Not enough data yet" empty states per card, not crash or show 0%/fake confidence).
+```
+
+**Definition of Done:** Selecting different Company/Role/Year combinations in the top bar produces visibly different, correctly-computed dashboard data, including at least one combo with sparse data that correctly shows a "Low confidence" / empty state.
+
+---
+
+## Phase 6 — Questions Explorer + Explainability
+
+**Goal:** Full /questions page with the "Why?" breakdown from spec section 31, plus filters and bookmarking.
+
+**Prompt to use:**
+
+```
+Build the /questions page:
+- Full sortable/filterable table or card-grid of question_scores for the selected company/role/cycle (filters: topic, difficulty, min score, "only bookmarked")
+- Each question row expands (accordion or side-drawer) to show the score breakdown EXACTLY like spec section 31's example format: bullet list of the contributing factors in plain language, generated from the stored component scores (topic_score, pattern_score, direct_evidence_score, difficulty_score, recency_score) — write a small "explain(question_score_row) -> string[]" formatter function, don't hardcode text
+- Bookmark toggle (star icon) writing to the bookmarks table
+- Progress status toggle (Not Started / Attempted / Solved) writing to user_progress
+- Link out to the external question (LeetCode/GFG url from questions.external_links)
+```
+
+**Definition of Done:** A user can filter, expand a question to see a human-readable "why this score" explanation, bookmark it, and mark progress, all persisted.
+
+---
+
+## Phase 7 — Personalization (Skill Gap Integration)
+
+**Goal:** Implement spec section 26 — student-specific prioritization.
+
+**Prompt to use:**
+
+```
+Build a skill-profile onboarding flow (simple form or imported from CP-tracking data if integrating with CodePilot later): per-topic self-rating Weak/Medium/Strong, saved to user_skill_profile.
+
+Extend the question scoring READ path (not the batch job — this can be a lightweight re-rank at request time) to compute:
+Priority = CompanySignal(topic) * SkillGap(topic) * QuestionValue(question)
+where SkillGap is a lookup table e.g. Weak=1.5x, Medium=1.0x, Strong=0.6x multiplier, configurable.
+
+Add a toggle on /dashboard and /questions: "Personalize for me" — when on, re-sort the recommended questions list by the personalized priority instead of raw final_recommendation_score, and visually flag questions that moved up due to a skill gap (small "Priority boost: DP gap" tag).
+```
+
+**Definition of Done:** Toggling personalization visibly reorders the question list and the reasoning is shown, not just the reorder.
+
+---
+
+## Phase 8 — Preparation Plan Generator (Knapsack Optimizer)
+
+**Goal:** Implement spec sections 27-28 (time-constrained optimization + diversity constraint) to generate the "N-Day Preparation Plan" panel for real.
+
+**Prompt to use:**
+
+```
+Build a /roadmap page and wire the dashboard's "N-Day Preparation Plan" panel to it:
+
+Backend: given available_hours (user input, default derived from N days * hours/day setting) and the current question_scores set, solve the knapsack-style selection from section 27:
+maximize sum(Value(q) * x_q) subject to sum(Time(q) * x_q) <= T, x_q in {0,1}
+Value(q) = final_recommendation_score (optionally personalized from Phase 7), Time(q) = estimated_time_minutes.
+Use a simple DP knapsack (question counts will be small, <500, so this is cheap) — implement in Python, expose as POST /api/prep-plan.
+
+Apply the diversity penalty from section 28: after initial knapsack selection, if more than ~40% of selected questions share the same primary topic, apply FinalValue(q) = Value(q) - lambda * SimilarityToSelected(q) (similarity = shared topic overlap ratio) and re-solve, or use a simpler greedy diversity re-rank for MVP — document which approach you chose.
+
+Group the output into week-buckets (day 1-5, 6-10, 11-15...) with a topic summary per week and a target completion % (matches the reference screenshot's "Week 1 (Days 1-5): Arrays, Hashing, Sliding Window — 80%" style rows with a horizontal progress bar per week).
+
+Frontend: /roadmap page shows the full multi-week breakdown; dashboard panel shows a condensed 3-week preview + "View Full Roadmap →".
+
+Persist the generated plan to prep_plans/prep_plan_days so it doesn't regenerate on every page load; add a "Regenerate" button.
+```
+
+**Definition of Done:** Entering a target day-count and hours/day produces a week-by-week plan that respects the time budget and isn't dominated by one topic.
+
+---
+
+## Phase 9 — Reports, Bookmarks, Progress Pages + Data Submission
+
+**Goal:** Round out the remaining sidebar tabs and close the data loop (users can submit new reports, feeding back into Phase 4's pipeline).
+
+**Prompt to use:**
+
+```
+Build:
+1. /reports — a form for users to submit a new OA/interview report (company, role, round, cycle, free-text description, optional screenshot upload for OCR later) -> writes to raw_reports with status='pending' and source_type='user_submission'. Show the user their own submission history + status (pending/processed/rejected).
+2. /bookmarks — grid/list of the user's bookmarked questions, same row component as Phase 6, with remove action.
+3. /progress — summary stats (solved/attempted/not-started counts, a simple bar or ring chart), filterable by company/topic, list of attempted questions with status toggles.
+4. Admin-only (role-gated) lightweight review queue for pending raw_reports (approve/reject/edit before they enter the scoring pipeline) — a simple table view is enough for MVP, no need for a full admin dashboard design.
+```
+
+**Definition of Done:** A logged-in user can submit a new report, see it pending, have it (manually, via admin queue) approved, and see it eventually reflected in topic_scores after the next batch run.
+
+---
+
+## Phase 10 — Polish, Explainability Audit, Deploy
+
+**Goal:** Production-readiness pass.
+
+**Prompt to use:**
+
+```
+Do a full UI/UX audit pass against the reference screenshot's density and polish level:
+- Verify all cards, spacing, and typography match the design system tokens from Phase 1 (no ad-hoc colors/spacing introduced in later phases)
+- Add loading skeletons (not spinners) for every data card, matching the glass-card shape
+- Add empty/error states everywhere data can be sparse or fail
+- Mobile pass: sidebar -> bottom nav or drawer, dashboard cards stack, charts remain readable at narrow widths
+- Run an accessibility pass: color contrast on the dark theme (especially green/red trend text on dark bg), keyboard nav through dropdowns and the questions table, aria-labels on icon-only buttons
+
+Explainability audit: confirm every score shown anywhere in the product (topic %, confidence badge, question score) has a corresponding "why" affordance (tooltip, expandable panel, or dedicated page) per spec section 31 — this is a stated core product requirement, not optional polish.
+
+Deploy: Vercel (frontend) + Railway (FastAPI engine + scheduled batch job) + Supabase (DB/Auth), env vars for lambda (recency decay), alpha/beta priors, and scoring weights (w1-w6) so they're tunable without a redeploy.
+```
+
+**Definition of Done:** The live deployed site matches the reference screenshot's visual quality, all data is real (no hardcoded dummy values left in the codebase), and every score is explainable on click/hover.
+
+---
+
+## Phase Ordering Rationale
+
+Phases 1→3 get you a demo-able shell fast (good for early feedback/screenshots). Phase 4 is the highest-risk, most novel piece (the math spec) — building it in isolation with synthetic data (Phase 4) before wiring the UI (Phase 5) means you can validate the Bayesian math against the spec's worked examples without also debugging frontend state at the same time. Phases 6-9 layer product depth on a now-proven data pipeline. Phase 10 is the "make it defensible in an interview/demo" pass — matches the same iterative-UI-audit pattern you used on the Hospital Command Center and CodePilot dashboards.
+
+## What to explicitly defer (per spec section 34, Phase 2/3 items)
+
+Do NOT build these until the MVP above is live and validated against real data: hierarchical Bayesian borrowing-strength across company/role groups (section 16), semantic embeddings for pattern similarity (section 25), change-point detection (section 19), logistic-regression calibration, automated source-reliability learning. Building these before you have real observation volume is over-engineering against synthetic assumptions.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-08-16T01:48:31+05:30.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.1 Pro (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
