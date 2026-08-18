@@ -31,13 +31,33 @@ export default function ReportsPage() {
 
   const supabase = createClient();
 
-  // Mock data since we don't have a fully populated PG database
+  // Fetch real data from Supabase
   useEffect(() => {
-    setReports([
-      { id: 1, date: "2 days ago", round: "OA", text: "Got 2 questions in the OA. First was related to merging overlapping intervals. Second was a graph traversal problem where I had to find the shortest path avoiding certain nodes. Fairly standard." },
-      { id: 2, date: "1 week ago", round: "Onsite", text: "Asked about system design for a URL shortener, and then a coding round focused strictly on Dynamic Programming. Specifically a variant of Longest Increasing Subsequence." },
-      { id: 3, date: "2 weeks ago", round: "Phone", text: "Very behavioral heavy. Only one coding question: Two Sum but with a twist regarding duplicate pairs." }
-    ]);
+    async function fetchReports() {
+      const { data, error } = await supabase
+        .from("raw_reports")
+        .select("*")
+        .ilike("company", `%${company}%`)
+        .ilike("role", `%${role}%`)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error("Error fetching reports:", error);
+        return;
+      }
+
+      if (data) {
+        setReports(data.map((d: any) => ({
+          id: d.id,
+          date: new Date(d.created_at).toLocaleDateString(),
+          round: d.round || "OA",
+          text: d.raw_text || "No content"
+        })));
+      }
+    }
+
+    fetchReports();
   }, [company, role]);
 
   // Sync form inputs with current URL search params when opening the form

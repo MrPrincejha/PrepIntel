@@ -25,15 +25,19 @@ export function TopBar() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [compRes, roleRes, cycleRes] = await Promise.all([
-          supabase.from('companies').select('slug, name'),
-          supabase.from('roles').select('slug, name'),
-          supabase.from('recruitment_cycles').select('year, label')
-        ]);
+        const { data: reports, error } = await supabase.from('raw_reports').select('company, role');
         
-        if (compRes.data && compRes.data.length > 0) setCompanies(compRes.data.map(c => ({ id: c.slug, name: c.name })));
-        if (roleRes.data && roleRes.data.length > 0) setRoles(roleRes.data.map(r => ({ id: r.slug, name: r.name })));
-        if (cycleRes.data && cycleRes.data.length > 0) setCycles(cycleRes.data.map(c => ({ id: c.year.toString(), label: c.label })));
+        if (reports && reports.length > 0) {
+          const uniqueCompanies = Array.from(new Set(reports.map(r => r.company?.toLowerCase() || ''))).filter(Boolean);
+          const uniqueRoles = Array.from(new Set(reports.map(r => r.role?.toLowerCase() || ''))).filter(Boolean);
+          
+          if (uniqueCompanies.length > 0) {
+            setCompanies(uniqueCompanies.map(c => ({ id: c, name: c.charAt(0).toUpperCase() + c.slice(1) })));
+          }
+          if (uniqueRoles.length > 0) {
+            setRoles(uniqueRoles.map(r => ({ id: r, name: r.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-') })));
+          }
+        }
       } catch (err) {
         console.warn("Using fallback mock data for selectors", err);
       }
