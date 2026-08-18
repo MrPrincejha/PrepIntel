@@ -134,34 +134,87 @@ def get_trend(company: str, role: str, topic: str, months: int = 12):
 
 @app.get("/api/questions")
 def get_questions(company: str, role: str, cycle: str, limit: int = 50):
-    # We dynamically score questions based on the real topics from Supabase
     reports = fetch_raw_reports(company, role)
     topic_probs = analyze_topics_from_text(reports) if reports else {}
     
-    base_questions = [
-        {"id": "q1", "title": "Longest Increasing Subsequence", "tags": ["1d-dp", "binary-search"], "difficulty": "Hard", "url": "https://leetcode.com/problems/longest-increasing-subsequence/"},
-        {"id": "q2", "title": "Merge Intervals", "tags": ["arrays", "sorting"], "difficulty": "Medium", "url": "https://leetcode.com/problems/merge-intervals/"},
-        {"id": "q3", "title": "Two Sum", "tags": ["arrays", "hashing"], "difficulty": "Easy", "url": "https://leetcode.com/problems/two-sum/"},
-        {"id": "q4", "title": "Course Schedule", "tags": ["graphs", "dfs"], "difficulty": "Medium", "url": "https://leetcode.com/problems/course-schedule/"},
-        {"id": "q5", "title": "Meeting Rooms II", "tags": ["greedy", "arrays"], "difficulty": "Medium", "url": "https://leetcode.com/problems/meeting-rooms-ii/"},
-        {"id": "q6", "title": "Number of Islands", "tags": ["graphs", "bfs"], "difficulty": "Medium", "url": "https://leetcode.com/problems/number-of-islands/"},
-    ]
+    dynamic_questions = []
     
-    for q in base_questions:
-        # Calculate dynamic score based on real company data
+    for idx, r in enumerate(reports):
+        text = str(r.get("raw_text", ""))
+        if len(text.strip()) < 20:
+            continue
+            
+        lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
+        title = lines[0][:60] + "..." if len(lines[0]) > 60 else lines[0]
+        if not title:
+            title = f"Reported Question {idx+1}"
+            
+        q_tags = []
+        text_lower = text.lower()
+        if "array" in text_lower or "list" in text_lower: q_tags.append("arrays")
+        if "dp" in text_lower or "dynamic programming" in text_lower: q_tags.append("1d-dp")
+        if "graph" in text_lower or "tree" in text_lower: q_tags.append("graphs")
+        if "greedy" in text_lower: q_tags.append("greedy")
+        if "hash" in text_lower or "map" in text_lower: q_tags.append("hashing")
+        if "binary search" in text_lower or "mid" in text_lower: q_tags.append("binary-search")
+        if not q_tags: q_tags = ["arrays"]
+        
+        l = len(text_lower)
+        if "hard" in text_lower or l > 1200: diff = "Hard"
+        elif "easy" in text_lower or l < 400: diff = "Easy"
+        else: diff = "Medium"
+        
         score = 50
-        for tag in q['tags']:
+        for tag in q_tags:
             if tag in topic_probs:
                 score += (topic_probs[tag] * 100)
-        q['final_recommendation_score'] = min(99, int(score))
-        q['topic_score'] = min(99, int(score))
-        q['pattern_score'] = 70
-        q['recency_score'] = 80
-        q['difficulty_fit'] = 80
-        q['direct_evidence_score'] = 90
+                
+        dynamic_questions.append({
+            "id": f"dyn_q{idx}",
+            "title": title,
+            "tags": list(set(q_tags)),
+            "difficulty": diff,
+            "url": f"/reports?company={company}&role={role}",
+            "final_recommendation_score": min(99, int(score)),
+            "topic_score": min(99, int(score)),
+            "pattern_score": 70,
+            "recency_score": 90,
+            "difficulty_fit": 80,
+            "direct_evidence_score": 100
+        })
         
-    sorted_q = sorted(base_questions, key=lambda x: x['final_recommendation_score'], reverse=True)
-    return sorted_q[:limit]
+    if not dynamic_questions:
+        base_questions = [
+            {"id": "q1", "title": "Longest Increasing Subsequence", "tags": ["1d-dp", "binary-search"], "difficulty": "Hard", "url": "https://leetcode.com/problems/longest-increasing-subsequence/"},
+            {"id": "q2", "title": "Merge Intervals", "tags": ["arrays", "sorting"], "difficulty": "Medium", "url": "https://leetcode.com/problems/merge-intervals/"},
+            {"id": "q3", "title": "Two Sum", "tags": ["arrays", "hashing"], "difficulty": "Easy", "url": "https://leetcode.com/problems/two-sum/"},
+            {"id": "q4", "title": "Course Schedule", "tags": ["graphs", "dfs"], "difficulty": "Medium", "url": "https://leetcode.com/problems/course-schedule/"},
+            {"id": "q5", "title": "Meeting Rooms II", "tags": ["greedy", "arrays"], "difficulty": "Medium", "url": "https://leetcode.com/problems/meeting-rooms-ii/"},
+            {"id": "q6", "title": "Number of Islands", "tags": ["graphs", "bfs"], "difficulty": "Medium", "url": "https://leetcode.com/problems/number-of-islands/"},
+        ]
+        dynamic_questions = base_questions
+        for q in dynamic_questions:
+            score = 50
+            for tag in q['tags']:
+                if tag in topic_probs: score += (topic_probs[tag] * 100)
+            q['final_recommendation_score'] = min(99, int(score))
+            q['topic_score'] = min(99, int(score))
+            q['pattern_score'] = 70
+            q['recency_score'] = 80
+            q['difficulty_fit'] = 80
+            q['direct_evidence_score'] = 90
+            
+    sorted_q = sorted(dynamic_questions, key=lambda x: x['final_recommendation_score'], reverse=True)
+    
+    # Ensure distinct titles to prevent clutter
+    seen_titles = set()
+    unique_q = []
+    for q in sorted_q:
+        if q['title'] not in seen_titles:
+            seen_titles.add(q['title'])
+            unique_q.append(q)
+            
+    return unique_q[:limit]
 
 @app.post("/api/prep-plan")
 def generate_prep_plan(req: PrepPlanRequest):
