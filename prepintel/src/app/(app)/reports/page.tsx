@@ -48,12 +48,23 @@ export default function ReportsPage() {
       }
 
       if (data) {
-        setReports(data.map((d: any) => ({
-          id: d.id,
-          date: new Date(d.created_at).toLocaleDateString(),
-          round: d.round || "OA",
-          text: d.raw_text || "No content"
-        })));
+        const cleanedReports = data.map((d: any) => {
+          const raw = d.raw_text || "";
+          let cleanText = raw;
+          try {
+            cleanText = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+          } catch (e) {
+            console.error("Regex error:", e);
+          }
+          return {
+            id: d.id,
+            date: new Date(d.created_at).toLocaleDateString(),
+            round: d.round || "OA",
+            text: cleanText
+          };
+        }).filter(r => r.text && r.text.length > 5); // Must have some actual content left
+
+        setReports(cleanedReports);
       }
     }
 
@@ -267,7 +278,7 @@ export default function ReportsPage() {
               <span className="text-xs text-white/40">{r.date}</span>
             </div>
             <pre className="text-sm text-white/80 leading-relaxed mt-1 whitespace-pre-wrap font-sans">
-              {r.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()}
+              {r.text}
             </pre>
           </GlassPanel>
         ))}
