@@ -145,7 +145,19 @@ def get_questions(company: str, role: str, cycle: str, limit: int = 50):
             continue
             
         lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
-        title = lines[0][:60] + "..." if len(lines[0]) > 60 else lines[0]
+        title = ""
+        for line in lines:
+            clean_line = line.replace("#", "").strip()
+            # Skip lines that just say the company name or are too short
+            if len(clean_line) > 8 and company.lower() not in clean_line.lower():
+                title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
+                break
+                
+        if not title and lines:
+            # Fallback to the first non-empty line
+            clean_line = lines[0].replace("#", "").strip()
+            title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
+            
         if not title:
             title = f"Reported Question {idx+1}"
             
