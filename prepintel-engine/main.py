@@ -147,17 +147,24 @@ def get_questions(company: str, role: str, cycle: str, limit: int = 50):
         lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
         title = ""
         for line in lines:
-            clean_line = line.replace("#", "").strip()
-            # Skip lines that just say the company name or are too short
-            if len(clean_line) > 8 and company.lower() not in clean_line.lower():
+            clean_line = line.strip()
+            # Aggressively skip markdown headers, bullets, or metadata lines like "- **Year:**"
+            if clean_line.startswith('-') or clean_line.startswith('#') or clean_line.startswith('*') or clean_line.startswith('**'):
+                continue
+            
+            # Skip lines that are just the company name or are too short to be a real title
+            if len(clean_line) > 10 and company.lower() not in clean_line.lower():
                 title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
                 break
                 
         if not title and lines:
-            # Fallback to the first non-empty line
-            clean_line = lines[0].replace("#", "").strip()
-            title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
-            
+            # Deep fallback: strip all markdown junk and find the first decent line
+            for line in lines:
+                clean_line = line.replace("#", "").replace("-", "").replace("*", "").strip()
+                if len(clean_line) > 5 and company.lower() not in clean_line.lower():
+                    title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
+                    break
+                    
         if not title:
             title = f"Reported Question {idx+1}"
             
@@ -184,6 +191,7 @@ def get_questions(company: str, role: str, cycle: str, limit: int = 50):
         dynamic_questions.append({
             "id": f"dyn_q{idx}",
             "title": title,
+            "raw_text": text,
             "tags": list(set(q_tags)),
             "difficulty": diff,
             "url": f"/reports?company={company}&role={role}",

@@ -299,7 +299,7 @@ export default function QuestionsPage() {
                           <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                           Why was this question recommended?
                         </h4>
-                        <ul className="space-y-2 text-sm text-white/70">
+                        <ul className="space-y-2 text-sm text-white/70 mb-6">
                           {getExplanation(q).map((line, idx) => {
                             const [boldPart, rest] = line.split("): ");
                             return (
@@ -313,7 +313,22 @@ export default function QuestionsPage() {
                             );
                           })}
                         </ul>
-                        <div className="mt-4 flex gap-2">
+                        
+                        {q.raw_text && (
+                          <div className="mt-4 pt-4 border-t border-white/10">
+                            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                              Full Problem Description
+                            </h4>
+                            <div className="bg-white/5 rounded-lg p-4 max-h-[300px] overflow-y-auto">
+                              <pre className="text-sm text-white/80 whitespace-pre-wrap font-mono leading-relaxed">
+                                {q.raw_text}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="mt-6 flex gap-2">
                           <button 
                             onClick={() => setQuestionProgress(q.id, 'attempted')}
                             className={cn(
