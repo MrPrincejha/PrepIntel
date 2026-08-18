@@ -7,6 +7,7 @@ import { GradientButton } from "@/components/core/GradientButton";
 import { CustomSelect } from "@/components/core/CustomSelect";
 import { createClient } from "@/lib/supabase/client";
 import { cleanReportText } from "@/lib/utils";
+import { ReportTextFormatter } from "@/components/core/ReportTextFormatter";
 import { Plus, X, FileText, Link as LinkIcon, CheckCircle, Image as ImageIcon } from "lucide-react";
 
 // The FastAPI engine URL
@@ -278,9 +279,9 @@ export default function ReportsPage() {
               <span className="px-2 py-0.5 rounded text-xs font-medium bg-white/10 text-white/80">{r.round}</span>
               <span className="text-xs text-white/40">{r.date}</span>
             </div>
-            <pre className="text-sm text-white/80 leading-relaxed mt-1 whitespace-pre-wrap font-sans">
-              {r.text}
-            </pre>
+            <div className="mt-2 border border-white/5 rounded-lg p-4 bg-black/20">
+              <ReportTextFormatter text={r.text} />
+            </div>
           </GlassPanel>
         ))}
         {reports.length === 0 && (

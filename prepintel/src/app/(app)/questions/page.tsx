@@ -8,6 +8,7 @@ import { CustomSelect } from "@/components/core/CustomSelect";
 import { createClient } from "@/lib/supabase/client";
 import { ChevronDown, ExternalLink, Star, CheckCircle, Circle, PlayCircle, Filter } from "lucide-react";
 import { cn, cleanReportText } from "@/lib/utils";
+import { ReportTextFormatter } from "@/components/core/ReportTextFormatter";
 
 const API_BASE = "http://localhost:8000/api";
 
@@ -322,10 +323,8 @@ export default function QuestionsPage() {
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                               Full Problem Description
                             </h4>
-                            <div className="bg-white/5 rounded-lg p-4 max-h-[300px] overflow-y-auto">
-                              <pre className="text-sm text-white/80 whitespace-pre-wrap font-mono leading-relaxed">
-                                {cleanReportText(q.raw_text)}
-                              </pre>
+                            <div className="bg-white/5 rounded-lg p-4 max-h-[400px] overflow-y-auto mt-2 border border-white/5">
+                              <ReportTextFormatter text={cleanReportText(q.raw_text)} />
                             </div>
                           </div>
                         )}
