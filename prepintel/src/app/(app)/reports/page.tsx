@@ -100,18 +100,23 @@ export default function ReportsPage() {
         });
         if (!res.ok) throw new Error("OCR extraction failed");
       } else {
-        // Standard text submission
+        // Pass text submission to Python backend for LLM refinement
         const { data: { session } } = await supabase.auth.getSession();
-        await supabase.from("raw_reports").insert({
-          company: submitCompany,
-          role: submitRole,
-          round: round,
-          source_type: "user_submission",
-          source_url: url,
-          raw_text: text,
-          submitted_by_user_id: session?.user?.id || null,
-          status: "pending"
+        const res = await fetch(`${API_BASE}/ingest/text`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            company: submitCompany,
+            role: submitRole,
+            round: round,
+            text: text,
+            url: url || undefined,
+            user_id: session?.user?.id || undefined
+          })
         });
+        if (!res.ok) throw new Error("Text refinement failed");
       }
       
       setSuccess(true);

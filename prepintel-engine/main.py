@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 from optimizer import knapsack_selection, apply_diversity_penalty, generate_weekly_buckets
-from ocr import extract_text_from_images
+from ocr import extract_text_from_images, refine_problem_description
 import os
 from dotenv import load_dotenv
 from supabase import create_client
@@ -284,19 +284,50 @@ async def ingest_screenshot(
     try:
         contents_list = [(await f.read(), f.content_type) for f in files]
         extracted_text = extract_text_from_images(contents_list)
+        refined_text = refine_problem_description(extracted_text)
         
         if sb:
             payload = {
                 "company": company.capitalize(),
                 "role": role,
                 "round": round_name,
-                "raw_text": extracted_text,
+                "raw_text": refined_text,
                 "status": "pending",
                 "source": "user_screenshot_batch"
             }
             sb.table("raw_reports").insert(payload).execute()
         
-        return {"status": "success", "extracted_text": extracted_text}
+        return {"status": "success", "extracted_text": refined_text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class TextIngestRequest(BaseModel):
+    company: str
+    role: str
+    round: str
+    text: str
+    url: Optional[str] = None
+    user_id: Optional[str] = None
+
+@app.post("/api/ingest/text")
+def ingest_text(req: TextIngestRequest):
+    try:
+        refined_text = refine_problem_description(req.text)
+        
+        if sb:
+            payload = {
+                "company": req.company.capitalize(),
+                "role": req.role,
+                "round": req.round,
+                "source_type": "user_submission",
+                "source_url": req.url,
+                "raw_text": refined_text,
+                "submitted_by_user_id": req.user_id,
+                "status": "pending"
+            }
+            sb.table("raw_reports").insert(payload).execute()
+            
+        return {"status": "success", "refined_text": refined_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
