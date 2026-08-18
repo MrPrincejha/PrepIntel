@@ -136,8 +136,8 @@ async def ingest_screenshot(
     round: str = Form(...)
 ):
     try:
-        # Read all files into memory
-        contents_list = [await f.read() for f in files]
+        # Pass list of (bytes, content_type) tuples
+        contents_list = [(await f.read(), f.content_type) for f in files]
         
         extracted_text = extract_text_from_images(contents_list)
         

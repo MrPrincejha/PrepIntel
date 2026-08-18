@@ -115,14 +115,25 @@ export default function ReportsPage() {
             <X className="w-5 h-5" />
           </button>
           
-          {success ? (
+              {success ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-3">
               <CheckCircle className="w-12 h-12 text-status-success" />
               <h3 className="text-lg font-semibold text-white">Report Submitted!</h3>
               <p className="text-white/60 text-sm text-center">Your report has been sent to the pending queue for admin review.<br/>Once approved, it will be ingested into the math engine.</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!submitCompany || !submitRole) {
+                alert("Please fill in Company and Role.");
+                return;
+              }
+              if (files.length === 0 && !text) {
+                alert("Please provide either text or screenshots.");
+                return;
+              }
+              handleSubmit(e);
+            }} className="space-y-4" noValidate>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-6">
                 <FileText className="w-5 h-5 text-primary" />
                 Submit Interview Experience
@@ -219,7 +230,7 @@ export default function ReportsPage() {
               </div>
 
               <div className="pt-2 flex justify-end">
-                <GradientButton type="submit" disabled={submitting || !text}>
+                <GradientButton type="submit" disabled={submitting || (files.length === 0 && !text)}>
                   {submitting ? "Submitting..." : "Submit to Queue"}
                 </GradientButton>
               </div>
