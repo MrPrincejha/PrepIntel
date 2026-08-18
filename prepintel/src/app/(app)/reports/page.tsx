@@ -6,6 +6,7 @@ import { GlassPanel } from "@/components/core/GlassPanel";
 import { GradientButton } from "@/components/core/GradientButton";
 import { CustomSelect } from "@/components/core/CustomSelect";
 import { createClient } from "@/lib/supabase/client";
+import { cleanReportText } from "@/lib/utils";
 import { Plus, X, FileText, Link as LinkIcon, CheckCircle, Image as ImageIcon } from "lucide-react";
 
 // The FastAPI engine URL
@@ -52,9 +53,9 @@ export default function ReportsPage() {
           const raw = d.raw_text || "";
           let cleanText = raw;
           try {
-            cleanText = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            cleanText = cleanReportText(raw);
           } catch (e) {
-            console.error("Regex error:", e);
+            console.error("Cleaning error:", e);
           }
           return {
             id: d.id,
