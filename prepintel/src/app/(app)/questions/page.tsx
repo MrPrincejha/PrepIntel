@@ -253,10 +253,12 @@ export default function QuestionsPage() {
                     {/* Core Info */}
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
                       <div className="flex items-center gap-2">
-                        <a href={q.url} target="_blank" rel="noreferrer" className="text-base font-medium text-white hover:text-primary transition-colors flex items-center gap-1.5 truncate">
+                        <button 
+                          onClick={() => setExpandedId(isExpanded ? null : q.id)}
+                          className="text-base font-medium text-white hover:text-primary transition-colors flex items-center gap-1.5 truncate text-left"
+                        >
                           {q.title}
-                          <ExternalLink className="w-3.5 h-3.5 opacity-50" />
-                        </a>
+                        </button>
                         {personalize && q._gapReason && (
                           <span className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded bg-primary/20 text-primary ml-2 border border-primary/30">
                             Priority boost: {TOPIC_STYLES[q._gapReason]?.name || q._gapReason} gap
