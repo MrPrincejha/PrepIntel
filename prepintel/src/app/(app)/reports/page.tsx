@@ -266,9 +266,9 @@ export default function ReportsPage() {
               <span className="px-2 py-0.5 rounded text-xs font-medium bg-white/10 text-white/80">{r.round}</span>
               <span className="text-xs text-white/40">{r.date}</span>
             </div>
-            <p className="text-sm text-white/80 leading-relaxed mt-1">
-              "{r.text}"
-            </p>
+            <pre className="text-sm text-white/80 leading-relaxed mt-1 whitespace-pre-wrap font-sans">
+              {r.text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()}
+            </pre>
           </GlassPanel>
         ))}
         {reports.length === 0 && (

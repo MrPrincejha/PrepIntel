@@ -324,7 +324,7 @@ export default function QuestionsPage() {
                             </h4>
                             <div className="bg-white/5 rounded-lg p-4 max-h-[300px] overflow-y-auto">
                               <pre className="text-sm text-white/80 whitespace-pre-wrap font-mono leading-relaxed">
-                                {q.raw_text}
+                                {q.raw_text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()}
                               </pre>
                             </div>
                           </div>
