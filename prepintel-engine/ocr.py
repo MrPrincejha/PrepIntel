@@ -119,7 +119,7 @@ RAW TEXT:
 """
     
     payload = {
-        "model": "llama-3.1-8b-instant", # Fast and cheap for text tasks
+        "model": "openai/gpt-oss-20b", # Use a different model to avoid sharing TPM limits with Qwen
         "messages": [
             {
                 "role": "user",
@@ -127,18 +127,30 @@ RAW TEXT:
             }
         ],
         "temperature": 0.1,
-        "max_tokens": 2048
+        "max_tokens": 1024
     }
     
-    try:
-        response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers=headers,
-            json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        logger.error(f"Error refining text with Groq: {e}")
-        return raw_text # Fallback to original text on failure
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"].strip()
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 429 and attempt < max_retries - 1:
+                wait_time = 4 ** attempt  # 1, 4, 16, 64 seconds
+                logger.warning(f"Refinement Rate limited (429). Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+                continue
+            logger.error(f"Error refining text with Groq HTTPError: {response.text}")
+            return raw_text
+        except Exception as e:
+            logger.error(f"Error refining text with Groq: {e}")
+            return raw_text # Fallback to original text on failure
+    
+    return raw_text
