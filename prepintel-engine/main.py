@@ -146,14 +146,30 @@ def get_questions(company: str, role: str, cycle: str, limit: int = 50):
             
         lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
         title = ""
+        
+        # Words commonly found in UI screenshots that shouldn't be titles
+        skip_words = ["prepintel", "overview", "questions", "roadmap", "reports", "bookmarks", "progress", "analytics", "admin queue", "issues", "questions explorer", "personalize for me", "all difficulties", "all topics", "bookmarked", "no questions found", "search topics", "company:", "role:", "year:", "why was this question recommended?", "topic match", "pattern match", "recency", "difficulty fit", "direct evidence", "full problem description"]
+        
         for line in lines:
             clean_line = line.strip()
+            clean_lower = clean_line.lower()
+            
             # Aggressively skip markdown headers, bullets, or metadata lines like "- **Year:**"
             if clean_line.startswith('-') or clean_line.startswith('#') or clean_line.startswith('*') or clean_line.startswith('**'):
                 continue
             
+            # Skip if line is exactly a known UI word or starts with it
+            is_ui_junk = False
+            for word in skip_words:
+                if clean_lower.startswith(word) or clean_lower == word:
+                    is_ui_junk = True
+                    break
+            
+            if is_ui_junk:
+                continue
+            
             # Skip lines that are just the company name or are too short to be a real title
-            if len(clean_line) > 10 and company.lower() not in clean_line.lower():
+            if len(clean_line) > 10 and company.lower() not in clean_lower:
                 title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
                 break
                 
@@ -161,7 +177,11 @@ def get_questions(company: str, role: str, cycle: str, limit: int = 50):
             # Deep fallback: strip all markdown junk and find the first decent line
             for line in lines:
                 clean_line = line.replace("#", "").replace("-", "").replace("*", "").strip()
-                if len(clean_line) > 5 and company.lower() not in clean_line.lower():
+                clean_lower = clean_line.lower()
+                
+                is_ui_junk = any(word in clean_lower for word in skip_words)
+                
+                if len(clean_line) > 5 and company.lower() not in clean_lower and not is_ui_junk:
                     title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
                     break
                     
