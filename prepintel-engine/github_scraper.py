@@ -1,6 +1,10 @@
 import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'prepintel', '.env.local'))
+
 import requests
 import base64
+import time
 from typing import List, Dict
 from supabase import create_client, Client
 import logging
@@ -18,8 +22,8 @@ TARGET_REPOS = [
 ]
 
 def init_supabase() -> Client:
-    url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_KEY")
+    url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
     if not url or not key:
         logger.warning("SUPABASE_URL or SUPABASE_KEY missing. Running in dry-run mode.")
         return None
@@ -67,16 +71,25 @@ def fetch_file_content(blob_url: str, pat: str = None) -> str:
     if pat:
         headers["Authorization"] = f"token {pat}"
         
-    res = requests.get(blob_url, headers=headers)
-    if res.status_code == 200:
-        data = res.json()
-        if data.get("encoding") == "base64":
-            try:
-                content = base64.b64decode(data["content"]).decode('utf-8')
-                return content
-            except Exception as e:
-                logger.error(f"Failed to decode blob: {e}")
-                return ""
+    for attempt in range(3):
+        try:
+            res = requests.get(blob_url, headers=headers, timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                if data.get("encoding") == "base64":
+                    try:
+                        content = base64.b64decode(data["content"]).decode('utf-8')
+                        return content
+                    except Exception as e:
+                        logger.error(f"Failed to decode blob: {e}")
+                        return ""
+            return ""
+        except requests.exceptions.RequestException as e:
+            if attempt < 2:
+                time.sleep(2)
+                continue
+            logger.error(f"Network error fetching blob: {e}")
+            return ""
     return ""
 
 def push_to_supabase(supabase: Client, repo: str, file_path: str, content: str):
