@@ -33,10 +33,10 @@ export async function GET(request: Request) {
     )
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(\\)
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
   // return the user to an error page with some instructions
-  return NextResponse.redirect(\/login?error=auth-code-error\)
+  return NextResponse.redirect(`${origin}/login?error=auth-code-error`)
 }
