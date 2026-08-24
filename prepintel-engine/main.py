@@ -31,23 +31,30 @@ def fetch_raw_reports(company: str, role: str) -> List[Dict]:
     # Fetch reports matching company (case insensitive via ilike)
     res = sb.table("raw_reports").select("*").ilike("company", f"%{company}%").execute()
     return res.data if res.data else []
+TOPICS = {
+    "arrays": ["array", "list", "vector", "matrix", "subarray"],
+    "1d-dp": ["dp", "dynamic programming", "memoization", "subsequence", "tabulation", "knapsack"],
+    "greedy": ["greedy", "interval", "scheduling"],
+    "graphs": ["graph", "node", "edge"],
+    "trees": ["tree", "binary tree", "bst", "trie"],
+    "hashing": ["hash", "map", "dictionary", "set", "frequency"],
+    "binary-search": ["binary search", "log n", "sorted array"],
+    "strings": ["string", "substring", "anagram", "palindrome", "character"],
+    "simulation": ["simulate", "simulation", "robot", "grid movement"],
+    "game-theory": ["game", "player", "optimal strategy", "win", "nim"],
+    "segment-tree": ["segment tree", "fenwick", "range query", "point update"],
+    "dfs": ["dfs", "depth first", "backtracking", "recursion"],
+    "bfs": ["bfs", "breadth first", "shortest path", "level order"],
+    "dijkstra": ["dijkstra", "shortest path", "priority queue", "heap"]
+}
 
 def analyze_topics_from_text(reports: List[Dict]) -> Dict[str, float]:
-    topics = {
-        "arrays": ["array", "list", "vector", "matrix", "subarray"],
-        "1d-dp": ["dp", "dynamic programming", "memoization", "subsequence", "tabulation"],
-        "greedy": ["greedy", "interval", "scheduling", "maximum", "minimum"],
-        "graphs": ["graph", "tree", "dfs", "bfs", "node", "edge", "traversal"],
-        "hashing": ["hash", "map", "dictionary", "set", "frequency"],
-        "binary-search": ["binary search", "log n", "sorted array", "mid"]
-    }
-    
-    scores = {k: 0 for k in topics.keys()}
+    scores = {k: 0 for k in TOPICS.keys()}
     total_matches = 0
     
     for r in reports:
         text = str(r.get("raw_text", "")).lower()
-        for t_key, keywords in topics.items():
+        for t_key, keywords in TOPICS.items():
             for kw in keywords:
                 count = text.count(kw)
                 scores[t_key] += count
