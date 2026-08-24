@@ -124,18 +124,28 @@ def get_difficulty(company: str, role: str, round_name: str, cycle: str):
 @app.get("/api/trend")
 def get_trend(company: str, role: str, topic: str, months: int = 12):
     # Deterministic dynamic trend based on company
-    seed = sum(ord(c) for c in company) + (1 if topic == 'all' else 0)
+    seed = sum(ord(c) for c in company)
     random.seed(seed)
     
+    reports = fetch_raw_reports(company, role)
+    if not reports:
+        top_topics = ["arrays", "hashing", "graphs"]
+    else:
+        topic_probs = analyze_topics_from_text(reports)
+        top_topics = [t[0] for t in sorted(topic_probs.items(), key=lambda x: x[1], reverse=True)[:3]]
+        
     months_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     data = []
-    current_prob = random.uniform(0.2, 0.5)
+    
+    current_probs = {t: random.uniform(0.1, 0.5) for t in top_topics}
     
     for i in range(12):
-        data.append({"month": months_labels[i], "probability": round(current_prob, 2)})
-        # Random walk
-        current_prob += random.uniform(-0.05, 0.08)
-        current_prob = max(0.1, min(0.9, current_prob))
+        month_data = {"month": months_labels[i]}
+        for t in top_topics:
+            month_data[t] = round(current_probs[t], 2)
+            current_probs[t] += random.uniform(-0.05, 0.08)
+            current_probs[t] = max(0.05, min(0.95, current_probs[t]))
+        data.append(month_data)
         
     return {"monthly_data": data}
 

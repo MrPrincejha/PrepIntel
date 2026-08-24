@@ -19,10 +19,24 @@ const TOPIC_STYLES: Record<string, any> = {
   "greedy": { icon: GitBranch, bg: "bg-amber-500/20", color: "text-amber-400", hex: "#fbbf24", name: "Greedy" },
   "graphs": { icon: Network, bg: "bg-fuchsia-500/20", color: "text-fuchsia-400", hex: "#e879f9", name: "Graphs" },
   "hashing": { icon: Search, bg: "bg-green-500/20", color: "text-green-400", hex: "#4ade80", name: "Hashing" },
-  "binary-search": { icon: Component, bg: "bg-cyan-500/20", color: "text-cyan-400", hex: "#22d3ee", name: "Binary Search" }
+  "binary-search": { icon: Component, bg: "bg-cyan-500/20", color: "text-cyan-400", hex: "#22d3ee", name: "Binary Search" },
+  "trees": { icon: Network, bg: "bg-emerald-500/20", color: "text-emerald-400", hex: "#34d399", name: "Trees" },
+  "strings": { icon: Hash, bg: "bg-indigo-500/20", color: "text-indigo-400", hex: "#818cf8", name: "Strings" },
+  "simulation": { icon: Layers, bg: "bg-rose-500/20", color: "text-rose-400", hex: "#fb7185", name: "Simulation" },
+  "game-theory": { icon: GitBranch, bg: "bg-purple-500/20", color: "text-purple-400", hex: "#c084fc", name: "Game Theory" },
+  "segment-tree": { icon: Network, bg: "bg-sky-500/20", color: "text-sky-400", hex: "#38bdf8", name: "Segment Tree" },
+  "dfs": { icon: Network, bg: "bg-pink-500/20", color: "text-pink-400", hex: "#f472b6", name: "DFS" },
+  "bfs": { icon: Network, bg: "bg-teal-500/20", color: "text-teal-400", hex: "#2dd4bf", name: "BFS" },
+  "dijkstra": { icon: Component, bg: "bg-orange-500/20", color: "text-orange-400", hex: "#fb923c", name: "Dijkstra" }
 };
 
-const DEFAULT_STYLE = { icon: Hash, bg: "bg-gray-500/20", color: "text-gray-400", hex: "#9ca3af", name: "Topic" };
+const DEFAULT_STYLE = (topic: string) => ({
+  icon: Hash,
+  bg: "bg-gray-500/20",
+  color: "text-gray-400",
+  hex: "#9ca3af",
+  name: topic.charAt(0).toUpperCase() + topic.slice(1).replace("-", " ")
+});
 
 export default function DashboardOverview() {
   const searchParams = useSearchParams();
@@ -164,7 +178,7 @@ export default function DashboardOverview() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {topics.slice(0, 3).map((t, idx) => {
-          const style = TOPIC_STYLES[t.topic] || DEFAULT_STYLE;
+          const style = TOPIC_STYLES[t.topic] || DEFAULT_STYLE(t.topic);
           const IconComponent = style.icon;
           
           let trendLabel: "up" | "down" | "stable" = "stable";
@@ -202,8 +216,8 @@ export default function DashboardOverview() {
                 />
                 {/* Dynamically render lines based on top 3 topics */}
                 {topics.slice(0, 3).map((t) => {
-                   const style = TOPIC_STYLES[t.topic] || DEFAULT_STYLE;
-                   return <Line key={t.topic} type="monotone" dataKey="probability" name={style.name} stroke={style.hex} strokeWidth={2} dot={false} />;
+                   const style = TOPIC_STYLES[t.topic] || DEFAULT_STYLE(t.topic);
+                   return <Line key={t.topic} type="monotone" dataKey={t.topic} name={style.name} stroke={style.hex} strokeWidth={2} dot={false} />;
                 })}
               </LineChart>
             </ResponsiveContainer>
