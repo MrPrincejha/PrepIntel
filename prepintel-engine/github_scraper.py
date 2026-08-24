@@ -89,9 +89,9 @@ def push_to_supabase(supabase: Client, repo: str, file_path: str, content: str):
     company = "Unknown"
     role = "Software Engineer"
     
-    # Simple heuristic to guess company from file path
+    # Expanded heuristics
     path_lower = file_path.lower()
-    companies = ['google', 'amazon', 'meta', 'apple', 'netflix', 'microsoft', 'uber']
+    companies = ['google', 'amazon', 'meta', 'apple', 'netflix', 'microsoft', 'uber', 'salesforce', 'texas', 'bloomberg', 'tiktok', 'bytedance', 'stripe', 'lyft', 'airbnb', 'doordash', 'roblox', 'snap']
     for c in companies:
         if c in path_lower:
             company = c.capitalize()
@@ -119,18 +119,38 @@ def run():
         
     supabase = init_supabase()
     
+    # Pre-fetch existing sources to avoid duplicates
+    existing_sources = set()
+    if supabase:
+        try:
+            res = supabase.table("raw_reports").select("source").like("source", "github:%").execute()
+            existing_sources = {row["source"] for row in res.data if row.get("source")}
+        except Exception as e:
+            logger.error(f"Failed to fetch existing sources: {e}")
+            
     for repo in TARGET_REPOS:
         logger.info(f"Scanning repository: {repo}")
         files = get_repo_files(repo, pat=pat)
         
         logger.info(f"Found {len(files)} target files in {repo}")
         
-        # Limit to first 10 for demonstration/batching purposes to avoid overloading DB
-        # In production, we'd keep track of a cursor or last-modified date
-        for f in files[:10]:
+        processed = 0
+        for f in files:
+            source_id = f"github:{repo}/{f['path']}"
+            if source_id in existing_sources:
+                continue
+                
             content = fetch_file_content(f["url"], pat=pat)
             if content and len(content.strip()) > 50:
                 push_to_supabase(supabase, repo, f["path"], content)
+                existing_sources.add(source_id)
+                processed += 1
+                
+            # Limit to 50 new files per repo per run to respect API limits
+            if processed >= 50:
+                logger.info(f"Reached 50 new files for {repo}, moving to next.")
+                break
 
 if __name__ == "__main__":
     run()
+
