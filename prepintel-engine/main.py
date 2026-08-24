@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
@@ -111,7 +111,7 @@ def get_topics(company: str, role: str, cycle: str):
     return result
 
 @app.get("/api/difficulty")
-def get_difficulty(company: str, role: str, round_name: str, cycle: str):
+def get_difficulty(company: str, role: str, cycle: str, round_type: str = Query("oa", alias="round")):
     reports = fetch_raw_reports(company, role)
     if not reports:
         return {"easy_pct": 33, "medium_pct": 34, "hard_pct": 33}
@@ -236,7 +236,11 @@ def get_questions(company: str, role: str, cycle: str, limit: int = 50):
                 if any(kw in text_lower for kw in keywords):
                     q_tags.append(t_key)
                     
-            if not q_tags: q_tags = ["two-pointers"]
+            if not q_tags:
+                if topic_probs:
+                    q_tags = [max(topic_probs.items(), key=lambda x: x[1])[0]]
+                else:
+                    q_tags = ["two-pointers"]
             
             l = len(text_lower)
             if "hard" in text_lower or l > 1200: diff = "Hard"
