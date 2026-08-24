@@ -116,16 +116,28 @@ def get_difficulty(company: str, role: str, cycle: str, round_type: str = Query(
     if not reports:
         return {"easy_pct": 33, "medium_pct": 34, "hard_pct": 33}
         
+    import re
     easy_c, med_c, hard_c = 0, 0, 0
     for r in reports:
-        text = str(r.get("raw_text", "")).lower()
-        l = len(text)
-        if "hard" in text or l > 1200:
-            hard_c += 1
-        elif "easy" in text or l < 400:
-            easy_c += 1
-        else:
-            med_c += 1
+        raw_full_text = str(r.get("raw_text", ""))
+        chunks = re.split(r'\n(?=#{1,4}\s*\d+\.\s|#{1,4}\s*(?:Q|Question|Problem)\s*\d+|(?:\*\*|)Question\s*\d+(?:\*\*|)\s*[:\-])', raw_full_text, flags=re.IGNORECASE)
+        
+        for i, chunk in enumerate(chunks):
+            text = chunk.strip().lower()
+            if len(text) < 40: continue
+            
+            if len(chunks) > 1 and i == 0:
+                lines = [line.strip() for line in text.split('\n') if line.strip()]
+                if lines and not re.match(r'^(?:#{1,4}\s*)?(?:\d+\.\s+|(?:Q|Question|Problem)\s*\d+\s*[:\-\.]?\s*|\*\*(?:Q|Question)\s*\d+\*\*\s*[:\-\.]?\s*)(.*)', lines[0], re.IGNORECASE):
+                    continue
+            
+            l = len(text)
+            if "hard" in text or l > 1200:
+                hard_c += 1
+            elif "easy" in text or l < 400:
+                easy_c += 1
+            else:
+                med_c += 1
             
     total = easy_c + med_c + hard_c
     if total == 0:
