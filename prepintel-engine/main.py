@@ -29,8 +29,13 @@ class PrepPlanRequest(BaseModel):
 def fetch_raw_reports(company: str, role: str) -> List[Dict]:
     if not sb: return []
     # Fetch reports matching company (case insensitive via ilike)
-    res = sb.table("raw_reports").select("*").ilike("company", f"%{company}%").execute()
-    return res.data if res.data else []
+    try:
+        res = sb.table("raw_reports").select("*").ilike("company", f"%{company}%").execute()
+        return res.data if res.data else []
+    except Exception as e:
+        print(f"Error fetching reports: {e}")
+        return []
+
 TOPICS = {
     "arrays": ["array", "list", "vector", "matrix", "subarray"],
     "1d-dp": ["dp", "dynamic programming", "memoization", "subsequence", "tabulation", "knapsack"],
