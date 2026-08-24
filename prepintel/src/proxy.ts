@@ -37,6 +37,16 @@ export async function proxy(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
   if (!user && (isProtectedRoute || request.nextUrl.pathname === '/')) {
+    // Temporarily bypassed for local testing due to Supabase rate limits!
+    if (process.env.NODE_ENV === 'development') {
+      if (request.nextUrl.pathname === '/') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
+      return supabaseResponse
+    }
+
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
