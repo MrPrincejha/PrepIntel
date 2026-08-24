@@ -37,20 +37,31 @@ def fetch_raw_reports(company: str, role: str) -> List[Dict]:
         return []
 
 TOPICS = {
-    "arrays": ["array", "list", "vector", "matrix", "subarray"],
-    "1d-dp": ["dp", "dynamic programming", "memoization", "subsequence", "tabulation", "knapsack"],
-    "greedy": ["greedy", "interval", "scheduling"],
-    "graphs": ["graph", "node", "edge"],
-    "trees": ["tree", "binary tree", "bst", "trie"],
-    "hashing": ["hash", "map", "dictionary", "set", "frequency"],
-    "binary-search": ["binary search", "log n", "sorted array"],
-    "strings": ["string", "substring", "anagram", "palindrome", "character"],
-    "simulation": ["simulate", "simulation", "robot", "grid movement"],
-    "game-theory": ["game", "player", "optimal strategy", "win", "nim"],
-    "segment-tree": ["segment tree", "fenwick", "range query", "point update"],
-    "dfs": ["dfs", "depth first", "backtracking", "recursion"],
-    "bfs": ["bfs", "breadth first", "shortest path", "level order"],
-    "dijkstra": ["dijkstra", "shortest path", "priority queue", "heap"]
+    "hashing": ["hash", "map", "frequency", "duplicates", "membership", "unordered_map"],
+    "prefix-sum": ["prefix sum", "range sum", "subarray sum", "difference array", "prefix xor"],
+    "two-pointers": ["two pointers", "pair with target", "closest pair", "opposite direction"],
+    "sliding-window": ["sliding window", "longest substring", "smallest subarray", "consecutive elements"],
+    "binary-search": ["binary search", "log n", "lower_bound", "minimum possible", "maximum possible"],
+    "intervals": ["intervals", "overlapping", "maximum activities", "interval scheduling"],
+    "greedy": ["greedy", "locally optimal", "fractional knapsack", "job sequencing"],
+    "heaps": ["priority queue", "min heap", "max heap", "top k", "kth largest"],
+    "monotonic-stack": ["monotonic stack", "next greater", "previous smaller", "stock span", "largest rectangle"],
+    "linked-list": ["linked list", "fast and slow", "detect cycle", "middle node"],
+    "backtracking": ["backtracking", "permutations", "subsets", "combinations", "n-queens"],
+    "bit-manipulation": ["bitmask", "xor", "bitwise"],
+    "dynamic-programming": ["dp", "dynamic programming", "memoization", "tabulation", "knapsack", "lcs", "lis", "subset sum"],
+    "game-theory": ["game theory", "nim", "sprague-grundy", "winning state"],
+    "dfs-bfs": ["dfs", "depth first search", "bfs", "breadth first search", "connected components", "0-1 bfs"],
+    "shortest-paths": ["dijkstra", "bellman-ford", "floyd-warshall", "shortest path"],
+    "topological-sort": ["topological sort", "prerequisite", "course schedule", "dependency", "kahn"],
+    "dsu": ["dsu", "union find", "disjoint set"],
+    "mst": ["mst", "minimum spanning tree", "kruskal", "prim"],
+    "trees": ["tree", "binary tree", "lca", "binary lifting", "tree diameter"],
+    "segment-tree": ["segment tree", "fenwick", "sparse table", "range query"],
+    "trie": ["trie", "prefix tree", "autocomplete"],
+    "string-matching": ["kmp", "z algorithm", "rolling hash", "manacher", "palindrome"],
+    "math": ["gcd", "lcm", "sieve", "prime factorization", "modular", "combinatorics"],
+    "geometry": ["cross product", "polygon area", "convex hull"]
 }
 
 def analyze_topics_from_text(reports: List[Dict]) -> Dict[str, float]:
@@ -67,7 +78,7 @@ def analyze_topics_from_text(reports: List[Dict]) -> Dict[str, float]:
                 
     if total_matches == 0:
         # Fallback if no text matched
-        return {"arrays": 0.3, "hashing": 0.3, "graphs": 0.4}
+        return {"two-pointers": 0.3, "hashing": 0.3, "dfs-bfs": 0.4}
         
     # Normalize to probabilities
     return {k: v / total_matches for k, v in scores.items()}
@@ -77,9 +88,9 @@ def get_topics(company: str, role: str, cycle: str):
     reports = fetch_raw_reports(company, role)
     if not reports:
         return [
-            {"topic": "arrays", "weighted_probability": 0.33, "trend_score": 0.0},
+            {"topic": "two-pointers", "weighted_probability": 0.33, "trend_score": 0.0},
             {"topic": "hashing", "weighted_probability": 0.33, "trend_score": 0.0},
-            {"topic": "graphs", "weighted_probability": 0.34, "trend_score": 0.0}
+            {"topic": "dfs-bfs", "weighted_probability": 0.34, "trend_score": 0.0}
         ]
         
     topic_probs = analyze_topics_from_text(reports)
@@ -134,7 +145,7 @@ def get_trend(company: str, role: str, topic: str, months: int = 12):
     
     reports = fetch_raw_reports(company, role)
     if not reports:
-        top_topics = ["arrays", "hashing", "graphs"]
+        top_topics = ["two-pointers", "hashing", "dfs-bfs"]
     else:
         topic_probs = analyze_topics_from_text(reports)
         top_topics = [t[0] for t in sorted(topic_probs.items(), key=lambda x: x[1], reverse=True)[:3]]
@@ -212,12 +223,10 @@ def get_questions(company: str, role: str, cycle: str, limit: int = 50):
             
         q_tags = []
         text_lower = text.lower()
-        if "array" in text_lower or "list" in text_lower: q_tags.append("arrays")
-        if "dp" in text_lower or "dynamic programming" in text_lower: q_tags.append("1d-dp")
-        if "graph" in text_lower or "tree" in text_lower: q_tags.append("graphs")
-        if "greedy" in text_lower: q_tags.append("greedy")
-        if "hash" in text_lower or "map" in text_lower: q_tags.append("hashing")
-        if "binary search" in text_lower or "mid" in text_lower: q_tags.append("binary-search")
+        for t_key, keywords in TOPICS.items():
+            if any(kw in text_lower for kw in keywords):
+                q_tags.append(t_key)
+                
         if not q_tags: q_tags = ["arrays"]
         
         l = len(text_lower)
