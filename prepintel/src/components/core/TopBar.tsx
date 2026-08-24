@@ -78,19 +78,72 @@ export function TopBar() {
   const handleRoleChange = (val: string) => { setSelectedRole(val); updateUrl("role", val); };
   const handleCycleChange = (val: string) => { setSelectedCycle(val); updateUrl("cycle", val); };
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) setSearchOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const searchResults = useCallback(() => {
+    if (!searchQuery) return [];
+    
+    function lcsScore(q: string, t: string): number {
+      const ql = q.toLowerCase();
+      const tl = t.toLowerCase();
+      const dp = Array.from({ length: ql.length + 1 }, () => Array(tl.length + 1).fill(0));
+      for (let i = 1; i <= ql.length; i++) {
+        for (let j = 1; j <= tl.length; j++) {
+          if (ql[i - 1] === tl[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+          else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+      return dp[ql.length][tl.length] * 100 - tl.length; // Tie-breaker for shorter strings
+    }
+    
+    return companies
+      .map(c => ({ ...c, score: lcsScore(searchQuery, c.name) }))
+      .filter(c => c.score > -100) // basic threshold
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }, [searchQuery, companies]);
+
   const companyName = companies.find(c => c.id === selectedCompany)?.name || "Company";
   const roleName = roles.find(r => r.id === selectedRole)?.name || "Role";
   const cycleLabel = cycles.find(c => c.id === selectedCycle)?.label || "Year";
 
   return (
     <div className="h-16 border-b border-white/10 bg-background/50 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
-      <div className="relative w-64">
+      <div className="relative w-72" ref={searchRef}>
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
         <input
           type="text"
-          placeholder="Search topics, questions..."
+          value={searchQuery}
+          onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+          onFocus={() => setSearchOpen(true)}
+          placeholder="Search companies..."
           className="w-full bg-white/5 border border-white/10 rounded-full py-1.5 pl-9 pr-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-white/30"
         />
+        {searchOpen && searchQuery && (
+          <div className="absolute top-full left-0 mt-2 w-full bg-[#0B0D14] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
+            {searchResults().length > 0 ? searchResults().map(c => (
+              <button
+                key={c.id}
+                onClick={() => { handleCompanyChange(c.id); setSearchOpen(false); setSearchQuery(''); }}
+                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+              >
+                {c.name}
+              </button>
+            )) : (
+              <div className="px-4 py-2 text-sm text-white/50">No companies found</div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
