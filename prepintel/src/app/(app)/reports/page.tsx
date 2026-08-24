@@ -11,7 +11,7 @@ import { ReportTextFormatter } from "@/components/core/ReportTextFormatter";
 import { Plus, X, FileText, Link as LinkIcon, CheckCircle, Image as ImageIcon } from "lucide-react";
 
 // The FastAPI engine URL
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
 export default function ReportsPage() {
   const searchParams = useSearchParams();

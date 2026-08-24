@@ -9,7 +9,7 @@ import { TagPill } from "@/components/core/TagPill";
 import { cn } from "@/lib/utils";
 import { Map, Clock, ArrowRight, ExternalLink } from "lucide-react";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
 const TOPIC_STYLES: Record<string, any> = {
   "arrays": { name: "Arrays" },

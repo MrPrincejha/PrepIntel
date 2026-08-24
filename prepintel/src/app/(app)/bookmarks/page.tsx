@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ChevronDown, ExternalLink, Star, CheckCircle, Circle, PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
 const TOPIC_STYLES: Record<string, any> = {
   "arrays": { name: "Arrays" },

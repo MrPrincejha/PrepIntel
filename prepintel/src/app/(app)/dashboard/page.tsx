@@ -11,7 +11,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
 const TOPIC_STYLES: Record<string, any> = {
   "arrays": { icon: Hash, bg: "bg-blue-500/20", color: "text-blue-400", hex: "#60a5fa", name: "Arrays" },
