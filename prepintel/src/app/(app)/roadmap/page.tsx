@@ -32,6 +32,7 @@ export default function RoadmapPage() {
 
   const generatePlan = async () => {
     setLoading(true);
+    setPlan([]);
     try {
       const storedSkills = localStorage.getItem("prepintel_skill_profile");
       const skill_profile = storedSkills ? JSON.parse(storedSkills) : null;

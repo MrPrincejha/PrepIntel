@@ -36,6 +36,7 @@ export default function ReportsPage() {
   // Fetch real data from Supabase
   useEffect(() => {
     async function fetchReports() {
+      setReports([]);
       const { data, error } = await supabase
         .from("raw_reports")
         .select("*")

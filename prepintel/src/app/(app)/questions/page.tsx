@@ -59,6 +59,7 @@ export default function QuestionsPage() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
+      setQuestions([]);
       try {
         const res = await fetch(`${API_BASE}/questions?company=${company}&role=${role}&cycle=${cycle}&limit=100`);
         if (res.ok) {
