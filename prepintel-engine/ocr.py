@@ -70,6 +70,11 @@ def extract_text_from_images(image_data_list: list[tuple[bytes, str]]) -> str:
                 response.raise_for_status()
                 data = response.json()
                 extracted_text = data["choices"][0]["message"]["content"]
+                
+                import re
+                # Strip <think> blocks even if they are truncated (missing </think>)
+                extracted_text = re.sub(r"<think>.*?(?:</think>|$)", "", extracted_text, flags=re.DOTALL).strip()
+                
                 extracted_chunks.append(extracted_text)
                 break # Success, break out of retry loop
             except requests.exceptions.HTTPError as e:
@@ -119,7 +124,7 @@ RAW TEXT:
 """
     
     payload = {
-        "model": "openai/gpt-oss-20b", # Use a different model to avoid sharing TPM limits with Qwen
+        "model": "qwen/qwen3.6-27b", # Use Qwen model available on the account
         "messages": [
             {
                 "role": "user",
@@ -140,7 +145,12 @@ RAW TEXT:
             )
             response.raise_for_status()
             data = response.json()
-            return data["choices"][0]["message"]["content"].strip()
+            content = data["choices"][0]["message"]["content"].strip()
+            
+            # Qwen reasoning models output <think> blocks, we must strip them
+            import re
+            content = re.sub(r"<think>.*?(?:</think>|$)", "", content, flags=re.DOTALL).strip()
+            return content
         except requests.exceptions.HTTPError as e:
             if response.status_code == 429 and attempt < max_retries - 1:
                 wait_time = 4 ** attempt  # 1, 4, 16, 64 seconds
