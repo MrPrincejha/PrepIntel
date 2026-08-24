@@ -172,87 +172,97 @@ def get_questions(company: str, role: str, cycle: str, limit: int = 50):
     
     dynamic_questions = []
     
-    for idx, r in enumerate(reports):
-        text = str(r.get("raw_text", ""))
-        if len(text.strip()) < 20:
+    question_idx = 0
+    import re
+    
+    for r in reports:
+        raw_full_text = str(r.get("raw_text", ""))
+        if len(raw_full_text.strip()) < 20:
             continue
             
-        lines = [line.strip() for line in text.strip().split('\n') if line.strip()]
-        title = ""
+        chunks = re.split(r'\n(?=#{1,4}\s*\d+\.\s|#{1,4}\s*(?:Q|Question|Problem)\s*\d+|(?:\*\*|)Question\s*\d+(?:\*\*|)\s*[:\-])', raw_full_text, flags=re.IGNORECASE)
         
-        # Words commonly found in UI screenshots that shouldn't be titles
-        skip_words = ["prepintel", "overview", "questions", "roadmap", "reports", "bookmarks", "progress", "analytics", "admin queue", "issues", "questions explorer", "personalize for me", "all difficulties", "all topics", "bookmarked", "no questions found", "search topics", "company:", "role:", "year:", "why was this question recommended?", "topic match", "pattern match", "recency", "difficulty fit", "direct evidence", "full problem description"]
-        
-        for line in lines:
-            clean_line = line.strip()
-            clean_lower = clean_line.lower()
-            
-            # Aggressively skip markdown headers, bullets, or metadata lines like "- **Year:**"
-            if clean_line.startswith('-') or clean_line.startswith('#') or clean_line.startswith('*') or clean_line.startswith('**'):
+        for i, chunk in enumerate(chunks):
+            text = chunk.strip()
+            if len(text) < 40:
                 continue
+                
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            if not lines: continue
             
-            # Skip if line is exactly a known UI word or starts with it
-            is_ui_junk = False
-            for word in skip_words:
-                if clean_lower.startswith(word) or clean_lower == word:
-                    is_ui_junk = True
-                    break
+            first_line = lines[0]
+            header_match = re.match(r'^(?:#{1,4}\s*)?(?:\d+\.\s+|(?:Q|Question|Problem)\s*\d+\s*[:\-\.]?\s*|\*\*(?:Q|Question)\s*\d+\*\*\s*[:\-\.]?\s*)(.*)', first_line, re.IGNORECASE)
             
-            if is_ui_junk:
+            if len(chunks) > 1 and i == 0 and not header_match:
                 continue
+                
+            title = ""
             
-            # Skip lines that are just the company name or are too short to be a real title
-            if len(clean_line) > 10 and company.lower() not in clean_lower:
-                title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
-                break
+            if header_match and len(header_match.group(1).strip()) > 3:
+                title = header_match.group(1).strip().replace("*", "").replace("#", "")
                 
-        if not title and lines:
-            # Deep fallback: strip all markdown junk and find the first decent line
-            for line in lines:
-                clean_line = line.replace("#", "").replace("-", "").replace("*", "").strip()
-                clean_lower = clean_line.lower()
+            if not title:
+                skip_words = ["prepintel", "overview", "questions", "roadmap", "reports", "bookmarks", "progress", "analytics", "admin queue", "issues", "questions explorer", "personalize for me", "all difficulties", "all topics", "bookmarked", "no questions found", "search topics", "company:", "role:", "year:", "why was this question recommended?", "topic match", "pattern match", "recency", "difficulty fit", "direct evidence", "full problem description"]
                 
-                is_ui_junk = any(word in clean_lower for word in skip_words)
-                
-                if len(clean_line) > 5 and company.lower() not in clean_lower and not is_ui_junk:
-                    title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
-                    break
+                for line in lines:
+                    clean_line = line.strip()
+                    clean_lower = clean_line.lower()
                     
-        if not title:
-            title = f"Reported Question {idx+1}"
+                    if clean_line.startswith('-') or clean_line.startswith('#') or clean_line.startswith('*') or clean_line.startswith('**'):
+                        continue
+                        
+                    is_ui_junk = any(clean_lower.startswith(w) or clean_lower == w for w in skip_words)
+                    if is_ui_junk: continue
+                    
+                    if len(clean_line) > 10 and company.lower() not in clean_lower:
+                        title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
+                        break
+                        
+            if not title and lines:
+                for line in lines:
+                    clean_line = line.replace("#", "").replace("-", "").replace("*", "").strip()
+                    clean_lower = clean_line.lower()
+                    is_ui_junk = any(w in clean_lower for w in skip_words)
+                    if len(clean_line) > 5 and company.lower() not in clean_lower and not is_ui_junk:
+                        title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
+                        break
+                        
+            if not title:
+                title = f"Reported Question {question_idx+1}"
             
-        q_tags = []
-        text_lower = text.lower()
-        for t_key, keywords in TOPICS.items():
-            if any(kw in text_lower for kw in keywords):
-                q_tags.append(t_key)
-                
-        if not q_tags: q_tags = ["arrays"]
-        
-        l = len(text_lower)
-        if "hard" in text_lower or l > 1200: diff = "Hard"
-        elif "easy" in text_lower or l < 400: diff = "Easy"
-        else: diff = "Medium"
-        
-        score = 50
-        for tag in q_tags:
-            if tag in topic_probs:
-                score += (topic_probs[tag] * 100)
-                
-        dynamic_questions.append({
-            "id": f"dyn_q{idx}",
-            "title": title,
-            "raw_text": text,
-            "tags": list(set(q_tags)),
-            "difficulty": diff,
-            "url": f"/reports?company={company}&role={role}",
-            "final_recommendation_score": min(99, int(score)),
-            "topic_score": min(99, int(score)),
-            "pattern_score": 70,
-            "recency_score": 90,
-            "difficulty_fit": 80,
-            "direct_evidence_score": 100
-        })
+            q_tags = []
+            text_lower = text.lower()
+            for t_key, keywords in TOPICS.items():
+                if any(kw in text_lower for kw in keywords):
+                    q_tags.append(t_key)
+                    
+            if not q_tags: q_tags = ["two-pointers"]
+            
+            l = len(text_lower)
+            if "hard" in text_lower or l > 1200: diff = "Hard"
+            elif "easy" in text_lower or l < 400: diff = "Easy"
+            else: diff = "Medium"
+            
+            score = 50
+            for tag in q_tags:
+                if tag in topic_probs:
+                    score += (topic_probs[tag] * 100)
+                    
+            dynamic_questions.append({
+                "id": f"dyn_q{question_idx}",
+                "title": title,
+                "raw_text": text,
+                "tags": list(set(q_tags)),
+                "difficulty": diff,
+                "url": f"/reports?company={company}&role={role}",
+                "final_recommendation_score": min(99, int(score)),
+                "topic_score": min(99, int(score)),
+                "pattern_score": 70,
+                "recency_score": 90,
+                "difficulty_fit": 80,
+                "direct_evidence_score": 100
+            })
+            question_idx += 1
         
     if not dynamic_questions:
         base_questions = [
