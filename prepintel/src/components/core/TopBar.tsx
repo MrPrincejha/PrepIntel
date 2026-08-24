@@ -35,7 +35,7 @@ export function TopBar() {
             setCompanies(uniqueCompanies.map(c => ({ id: c, name: c.charAt(0).toUpperCase() + c.slice(1) })));
           }
           if (uniqueRoles.length > 0) {
-            setRoles(uniqueRoles.map(r => ({ id: r, name: r.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-') })));
+            setRoles(uniqueRoles.map(r => ({ id: r, name: r.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join('-') })));
           }
         }
       } catch (err) {
