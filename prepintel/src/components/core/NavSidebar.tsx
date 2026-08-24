@@ -20,6 +20,7 @@ const NAV_ITEMS = [
 
 export function NavSidebar() {
   const pathname = usePathname();
+  const searchParams = require('next/navigation').useSearchParams();
   const [user, setUser] = useState<any>(null);
   const supabase = createClient();
 
@@ -32,6 +33,10 @@ export function NavSidebar() {
     });
     return () => subscription.unsubscribe();
   }, [supabase]);
+
+  // Build the query string to append to links
+  const qs = searchParams.toString();
+  const suffix = qs ? `?${qs}` : '';
 
   return (
     <>
@@ -46,7 +51,7 @@ export function NavSidebar() {
             return (
               <Link
                 key={item.name}
-                href={item.href}
+                href={`${item.href}${suffix}`}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group",
                   isActive
@@ -105,7 +110,7 @@ export function NavSidebar() {
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={`${item.href}${suffix}`}
               className={cn(
                 "flex flex-col items-center gap-1 p-2 min-w-[64px] rounded-lg transition-colors",
                 isActive ? "text-primary" : "text-white/50 hover:text-white"

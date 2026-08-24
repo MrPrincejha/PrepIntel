@@ -28,7 +28,7 @@ export function TopBar() {
         const { data: reports, error } = await supabase.from('raw_reports').select('company, role');
         
         if (reports && reports.length > 0) {
-          const uniqueCompanies = Array.from(new Set(reports.map(r => r.company?.toLowerCase() || ''))).filter(Boolean);
+          const uniqueCompanies = Array.from(new Set(reports.map(r => r.company?.toLowerCase() || ''))).filter(c => c && c !== 'unknown');
           const uniqueRoles = Array.from(new Set(reports.map(r => r.role?.toLowerCase() || ''))).filter(Boolean);
           
           if (uniqueCompanies.length > 0) {
