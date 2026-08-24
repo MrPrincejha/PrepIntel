@@ -102,13 +102,28 @@ def push_to_supabase(supabase: Client, repo: str, file_path: str, content: str):
     company = "Unknown"
     role = "Software Engineer"
     
-    # Expanded heuristics
-    path_lower = file_path.lower()
-    companies = ['google', 'amazon', 'meta', 'apple', 'netflix', 'microsoft', 'uber', 'salesforce', 'texas', 'bloomberg', 'tiktok', 'bytedance', 'stripe', 'lyft', 'airbnb', 'doordash', 'roblox', 'snap']
-    for c in companies:
-        if c in path_lower:
-            company = c.capitalize()
-            break
+    # Dynamic company extraction from file path
+    parts = file_path.replace("\\", "/").split("/")
+    
+    if len(parts) > 1:
+        # e.g. "Goldman_Sachs/blog.md" -> "Goldman Sachs"
+        extracted = parts[0].replace("_", " ").title()
+        if extracted.lower() not in ["formats", "docs", "src", "public", ".github", "assets", "images"]:
+            company = extracted
+    else:
+        # e.g. "Google.md" -> "Google"
+        extracted = parts[0].replace(".md", "").replace(".txt", "").replace(".pdf", "").replace("_", " ").title()
+        if extracted.lower() not in ["readme", "contributing", "code of conduct", "license"]:
+            company = extracted
+            
+    if company == "Unknown":
+        # Fallback to heuristics
+        path_lower = file_path.lower()
+        companies = ['google', 'amazon', 'meta', 'apple', 'netflix', 'microsoft', 'uber', 'salesforce', 'texas', 'bloomberg', 'tiktok', 'bytedance', 'stripe', 'lyft', 'airbnb', 'doordash', 'roblox', 'snap']
+        for c in companies:
+            if c in path_lower:
+                company = c.capitalize()
+                break
             
     payload = {
         "company": company,
