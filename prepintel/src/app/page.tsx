@@ -57,7 +57,7 @@ export default function LandingPage() {
                   <feature.icon className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white mb-1">{feature.title}</h3>
+                  <h2 className="text-sm font-bold text-white mb-1">{feature.title}</h2>
                   <p className="text-xs text-white/50 leading-relaxed">{feature.desc}</p>
                 </div>
               </div>
@@ -149,26 +149,27 @@ export default function LandingPage() {
             Crack Placements
           </motion.div>
         </div>
+
+        {/* Trust bar */}
+        <div className="border-t border-white/5 mt-auto py-10 bg-black/20 w-full self-end">
+          <div className="max-w-7xl mx-auto px-6">
+            <p className="text-center text-sm font-semibold text-white/50 tracking-widest uppercase mb-8">
+              Real OA & Interview Intelligence Covering Top Companies
+            </p>
+            <div className="flex flex-wrap justify-center gap-12 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+              {["Google", "Microsoft", "Amazon", "Adobe", "Flipkart", "PayPal"].map(company => (
+                <span key={company} className="text-2xl font-bold font-serif tracking-tighter text-white">
+                  {company}
+                </span>
+              ))}
+            </div>
+            <p className="text-center text-[10px] text-white/30 mt-6 max-w-2xl mx-auto">
+              Company names and logos are trademarks of their respective owners. PrepIntel is an independent interview-intelligence platform and is not affiliated with, endorsed by, or sponsored by these companies.
+            </p>
+          </div>
+        </div>
       </main>
 
-      {/* Trust bar */}
-      <div className="border-t border-white/5 mt-12 py-10 bg-black/20">
-        <div className="max-w-7xl mx-auto px-6">
-          <p className="text-center text-sm font-semibold text-white/50 tracking-widest uppercase mb-8">
-            Real OA & Interview Intelligence Covering Top Companies
-          </p>
-          <div className="flex flex-wrap justify-center gap-12 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-            {["Google", "Microsoft", "Amazon", "Adobe", "Flipkart", "PayPal"].map(company => (
-              <span key={company} className="text-2xl font-bold font-serif tracking-tighter text-white">
-                {company}
-              </span>
-            ))}
-          </div>
-          <p className="text-center text-[10px] text-white/30 mt-6 max-w-2xl mx-auto">
-            Company names and logos are trademarks of their respective owners. PrepIntel is an independent interview-intelligence platform and is not affiliated with, endorsed by, or sponsored by these companies.
-          </p>
-        </div>
-      </div>
       <PublicFooter />
     </div>
   );

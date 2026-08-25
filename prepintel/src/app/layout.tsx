@@ -15,8 +15,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PrepIntel | Know What Companies Ask. Prepare Smarter.",
-  description: "A placement-intelligence platform.",
+  metadataBase: new URL('https://prepintel-nine.vercel.app'),
+  title: {
+    template: '%s | PrepIntel',
+    default: 'PrepIntel | Know What Companies Ask. Prepare Smarter.',
+  },
+  description: 'The premier placement-intelligence platform. Discover exact interview questions, difficulty distributions, and personalized prep plans for top tech companies.',
+  openGraph: {
+    title: 'PrepIntel | Know What Companies Ask. Prepare Smarter.',
+    description: 'Discover exact interview questions and difficulty distributions for top tech companies.',
+    url: 'https://prepintel-nine.vercel.app',
+    siteName: 'PrepIntel',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'PrepIntel | Know What Companies Ask. Prepare Smarter.',
+    description: 'The premier placement-intelligence platform.',
+  },
 };
 
 export default function RootLayout({
