@@ -29,7 +29,7 @@ export default function PrivacyPage() {
           <p>We use the data we collect strictly to provide, maintain, and improve our platform, and to communicate with you regarding your account or updates.</p>
 
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">4. Contact Us</h2>
-          <p>If you have any questions about this Privacy Policy, please contact us at support@prepintel.com.</p>
+          <p>If you have any questions about this Privacy Policy, please contact us at princejha200490@gmail.com.</p>
         </div>
       </main>
       <PublicFooter />

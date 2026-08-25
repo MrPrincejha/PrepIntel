@@ -19,8 +19,8 @@ export default function ContactPage() {
             <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
               <h2 className="text-lg font-bold text-white mb-2">Email Support</h2>
               <p className="mb-4 text-sm">Reach out directly via email:</p>
-              <a href="mailto:support@prepintel.com" className="text-primary hover:underline font-medium">
-                support@prepintel.com
+              <a href="mailto:princejha200490@gmail.com" className="text-primary hover:underline font-medium break-all">
+                princejha200490@gmail.com
               </a>
             </div>
 
