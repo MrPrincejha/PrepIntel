@@ -100,8 +100,8 @@ export default function PrivacyPage() {
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">8. Third-Party Service Providers</h2>
           <p>We may use third-party services to operate and improve PrepIntel, including:</p>
           <ul className="list-disc pl-6 space-y-2">
-            <li>Supabase — authentication and backend services</li>
-            <li>Google — Google Sign-In and advertising services through Google AdSense</li>
+            <li>Supabase â€” authentication and backend services</li>
+            <li>Google â€” Google Sign-In and advertising services through Google AdSense</li>
           </ul>
           <p className="mt-4">These providers may process information as necessary to provide their respective services. Their handling of information is subject to their own privacy policies and applicable terms.</p>
 
