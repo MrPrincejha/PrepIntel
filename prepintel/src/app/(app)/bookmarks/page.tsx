@@ -4,20 +4,15 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { GlassPanel } from "@/components/core/GlassPanel";
 import { TagPill } from "@/components/core/TagPill";
+import { ListSkeleton } from "@/components/core/Skeletons";
 import { createClient } from "@/lib/supabase/client";
-import { ChevronDown, ExternalLink, Star, CheckCircle, Circle, PlayCircle } from "lucide-react";
+import { ChevronDown, ExternalLink, Star, CheckCircle, Circle, PlayCircle, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
-const TOPIC_STYLES: Record<string, any> = {
-  "arrays": { name: "Arrays" },
-  "1d-dp": { name: "1D DP" },
-  "greedy": { name: "Greedy" },
-  "graphs": { name: "Graphs" },
-  "hashing": { name: "Hashing" },
-  "binary-search": { name: "Binary Search" }
-};
+import { TOPIC_STYLES, TOPICS } from "@/lib/topics";
 
 export default function BookmarksPage() {
   const searchParams = useSearchParams();
@@ -113,13 +108,20 @@ export default function BookmarksPage() {
         <p className="text-white/60 text-sm mt-1">Saved for later review</p>
       </div>
 
-      <GlassPanel className="p-0 overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-white/50">Loading bookmarks...</div>
-        ) : filteredQuestions.length === 0 ? (
-          <div className="p-12 text-center text-white/50 flex flex-col items-center gap-3">
-            <Star className="w-8 h-8 opacity-20" />
-            <span>No bookmarked questions for this selection.</span>
+      {loading ? (
+        <ListSkeleton />
+      ) : (
+        <GlassPanel className="p-0 overflow-hidden">
+          {filteredQuestions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <Star className="w-10 h-10 text-white/20 mb-3" />
+            <p className="text-white/50 mb-5">No bookmarked questions for this selection.</p>
+            <Link 
+              href={`/questions?company=${company}&role=${role}&cycle=${cycle}`}
+              className="px-5 py-2.5 rounded-lg bg-gradient-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
+            >
+              Explore Questions to Bookmark <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         ) : (
           <div className="divide-y divide-white/10">
@@ -191,6 +193,7 @@ export default function BookmarksPage() {
           </div>
         )}
       </GlassPanel>
+      )}
     </div>
   );
 }

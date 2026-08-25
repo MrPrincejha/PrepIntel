@@ -3,16 +3,29 @@
 import { useState, useEffect } from "react";
 import { GlassPanel } from "@/components/core/GlassPanel";
 import { createClient } from "@/lib/supabase/client";
-import { Check, X, Edit2, ShieldAlert } from "lucide-react";
+import { Check, X, Edit2, ShieldAlert, Lock } from "lucide-react";
+import Link from "next/link";
+
+const ADMIN_EMAIL = "princejha200490@gmail.com";
 
 export default function AdminPage() {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
-    async function fetchPending() {
+    async function checkAdminAndFetch() {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+          setIsAdmin(false);
+          setLoading(false);
+          return;
+        }
+
+        setIsAdmin(true);
+
         // Attempt to fetch from real supabase
         const { data } = await supabase.from('raw_reports').select('*').eq('status', 'pending');
         if (data && data.length > 0) {
@@ -29,7 +42,7 @@ export default function AdminPage() {
       }
       setLoading(false);
     }
-    fetchPending();
+    checkAdminAndFetch();
   }, [supabase]);
 
   const handleAction = async (id: string, action: 'approved' | 'rejected') => {
@@ -40,6 +53,26 @@ export default function AdminPage() {
       await supabase.from('raw_reports').update({ status: action }).eq('id', id);
     }
   };
+
+  if (!loading && isAdmin === false) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+        <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
+          <Lock className="w-7 h-7 text-red-400" />
+        </div>
+        <h1 className="text-xl font-bold text-white mb-2">Access Denied</h1>
+        <p className="text-sm text-white/50 max-w-sm mb-6">
+          This area is restricted to administrators only.
+        </p>
+        <Link 
+          href="/dashboard"
+          className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white text-xs font-semibold rounded-lg transition-colors"
+        >
+          Return to Dashboard
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">

@@ -6,19 +6,13 @@ import { GlassPanel } from "@/components/core/GlassPanel";
 import { GradientButton } from "@/components/core/GradientButton";
 import { CustomSelect } from "@/components/core/CustomSelect";
 import { TagPill } from "@/components/core/TagPill";
+import { DifficultyBadge } from "@/components/core/DifficultyBadge";
 import { cn } from "@/lib/utils";
 import { Map, Clock, ArrowRight, ExternalLink } from "lucide-react";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
-const TOPIC_STYLES: Record<string, any> = {
-  "arrays": { name: "Arrays" },
-  "1d-dp": { name: "1D DP" },
-  "greedy": { name: "Greedy" },
-  "graphs": { name: "Graphs" },
-  "hashing": { name: "Hashing" },
-  "binary-search": { name: "Binary Search" }
-};
+import { TOPIC_STYLES, TOPICS } from "@/lib/topics";
 
 export default function RoadmapPage() {
   const searchParams = useSearchParams();
@@ -88,38 +82,37 @@ export default function RoadmapPage() {
       </div>
 
       <div className="space-y-6">
-        {plan.map((week, idx) => (
-          <GlassPanel key={idx} className="p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-white/10">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h2 className="text-lg font-bold text-white">{week.week}</h2>
-                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-white/10 text-white/70">{week.days}</span>
-                </div>
-                <p className="text-sm text-white/50">Focus: {week.topics.map((t: string) => TOPIC_STYLES[t]?.name || t).join(", ")}</p>
-              </div>
-              <div className="text-right">
-                <span className="text-2xl font-bold text-white block">{week.progress}%</span>
-                <span className="text-xs text-white/40">Completion</span>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {week.questions.map((q: any, qIdx: number) => (
-                <div key={qIdx} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group">
-                  <div className="flex items-center gap-3">
-                    <input type="checkbox" className="w-4 h-4 rounded border-white/20 bg-black/40 accent-primary cursor-pointer" />
-                    <a href={q.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-white/90 group-hover:text-white flex items-center gap-1.5">
-                      {q.title}
-                      <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />
-                    </a>
+        {loading ? (
+          <div className="p-12 text-center text-white/50">Optimizing your plan...</div>
+        ) : (
+          plan.map((week, idx) => (
+            <GlassPanel key={idx} className="p-0 overflow-hidden border border-white/20 shadow-lg">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-gradient-to-r from-primary/20 via-white/5 to-transparent border-b border-white/20">
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <h2 className="text-xl font-bold text-white drop-shadow-md">{week.week}</h2>
+                    <span className="px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-black/40 text-primary border border-primary/30 shadow-sm">{week.days}</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={cn(
-                      "text-xs font-medium",
-                      q.difficulty === "Easy" ? "text-status-success" : 
-                      q.difficulty === "Medium" ? "text-amber-400" : "text-status-error"
-                    )}>{q.difficulty}</span>
+                  <p className="text-sm font-medium text-white/70">Focus: {week.topics.map((t: string) => TOPIC_STYLES[t]?.name || t).join(", ")}</p>
+                </div>
+                <div className="text-right bg-black/40 px-4 py-2 rounded-lg border border-white/10">
+                  <span className="text-2xl font-bold text-white block leading-none mb-1">{week.progress}%</span>
+                  <span className="text-[10px] uppercase tracking-wider text-white/50 font-semibold">Completion</span>
+                </div>
+              </div>
+  
+              <div className="divide-y divide-white/5 p-2">
+                {week.questions.map((q: any, qIdx: number) => (
+                  <div key={qIdx} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/[0.04] transition-all group">
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" className="w-4 h-4 rounded border-white/20 bg-black/40 accent-primary cursor-pointer" />
+                      <a href={q.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-white/90 group-hover:text-white flex items-center gap-1.5">
+                        {q.title}
+                        <ExternalLink className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50 transition-opacity" />
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <DifficultyBadge level={q.difficulty} />
                     <div className="flex gap-1.5 hidden sm:flex">
                       {q.tags.map((t: string) => <TagPill key={t} label={TOPIC_STYLES[t]?.name || t} />)}
                     </div>
@@ -128,7 +121,7 @@ export default function RoadmapPage() {
               ))}
             </div>
           </GlassPanel>
-        ))}
+        )))}
         {plan.length === 0 && !loading && (
           <div className="p-12 text-center text-white/50">Could not generate a plan. Please try increasing your time budget.</div>
         )}

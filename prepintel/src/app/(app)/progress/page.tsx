@@ -5,20 +5,15 @@ import { useSearchParams } from "next/navigation";
 import { GlassPanel } from "@/components/core/GlassPanel";
 import { TagPill } from "@/components/core/TagPill";
 import { CustomSelect } from "@/components/core/CustomSelect";
+import { ListSkeleton } from "@/components/core/Skeletons";
 import { createClient } from "@/lib/supabase/client";
-import { CheckCircle, Circle, PlayCircle, ExternalLink, Target, Filter } from "lucide-react";
+import { CheckCircle, Circle, PlayCircle, ExternalLink, Target, Filter, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
-const TOPIC_STYLES: Record<string, any> = {
-  "arrays": { name: "Arrays" },
-  "1d-dp": { name: "1D DP" },
-  "greedy": { name: "Greedy" },
-  "graphs": { name: "Graphs" },
-  "hashing": { name: "Hashing" },
-  "binary-search": { name: "Binary Search" }
-};
+import { TOPIC_STYLES, TOPICS } from "@/lib/topics";
 
 export default function ProgressPage() {
   const searchParams = useSearchParams();
@@ -187,9 +182,18 @@ export default function ProgressPage() {
           <h2 className="text-base font-semibold text-white">Active & Completed Questions</h2>
         </div>
         {loading ? (
-          <div className="p-12 text-center text-white/50">Loading progress...</div>
+          <div className="p-12"><ListSkeleton /></div>
         ) : attemptedQuestions.length === 0 ? (
-          <div className="p-12 text-center text-white/50">No questions attempted yet for this selection.</div>
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <Target className="w-10 h-10 text-white/20 mb-3" />
+            <p className="text-white/50 mb-5">No questions attempted yet for this selection.</p>
+            <Link 
+              href={`/questions?company=${company}&role=${role}&cycle=${cycle}`}
+              className="px-5 py-2.5 rounded-lg bg-gradient-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
+            >
+              Browse Questions <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         ) : (
           <div className="divide-y divide-white/10">
             {attemptedQuestions.map((q) => {

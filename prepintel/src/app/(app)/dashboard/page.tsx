@@ -4,31 +4,16 @@ import { StatCard } from "@/components/core/StatCard";
 import { GlassPanel } from "@/components/core/GlassPanel";
 import { ConfidenceBadge } from "@/components/core/ConfidenceBadge";
 import { TagPill } from "@/components/core/TagPill";
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Layers, Hash, GitBranch, ArrowRight, Network, Search, Component } from "lucide-react";
+import { DashboardSkeleton } from "@/components/core/Skeletons";
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { Layers, Hash, GitBranch, ArrowRight, Network, Search, Component, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { TOPIC_STYLES } from "@/lib/topics";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
-
-const TOPIC_STYLES: Record<string, any> = {
-  "arrays": { icon: Hash, bg: "bg-blue-500/20", color: "text-blue-400", hex: "#60a5fa", name: "Arrays" },
-  "1d-dp": { icon: Layers, bg: "bg-violet-500/20", color: "text-violet-400", hex: "#a78bfa", name: "Dynamic Programming" },
-  "greedy": { icon: GitBranch, bg: "bg-amber-500/20", color: "text-amber-400", hex: "#fbbf24", name: "Greedy" },
-  "graphs": { icon: Network, bg: "bg-fuchsia-500/20", color: "text-fuchsia-400", hex: "#e879f9", name: "Graphs" },
-  "hashing": { icon: Search, bg: "bg-green-500/20", color: "text-green-400", hex: "#4ade80", name: "Hashing" },
-  "binary-search": { icon: Component, bg: "bg-cyan-500/20", color: "text-cyan-400", hex: "#22d3ee", name: "Binary Search" },
-  "trees": { icon: Network, bg: "bg-emerald-500/20", color: "text-emerald-400", hex: "#34d399", name: "Trees" },
-  "strings": { icon: Hash, bg: "bg-indigo-500/20", color: "text-indigo-400", hex: "#818cf8", name: "Strings" },
-  "simulation": { icon: Layers, bg: "bg-rose-500/20", color: "text-rose-400", hex: "#fb7185", name: "Simulation" },
-  "game-theory": { icon: GitBranch, bg: "bg-purple-500/20", color: "text-purple-400", hex: "#c084fc", name: "Game Theory" },
-  "segment-tree": { icon: Network, bg: "bg-sky-500/20", color: "text-sky-400", hex: "#38bdf8", name: "Segment Tree" },
-  "dfs": { icon: Network, bg: "bg-pink-500/20", color: "text-pink-400", hex: "#f472b6", name: "DFS" },
-  "bfs": { icon: Network, bg: "bg-teal-500/20", color: "text-teal-400", hex: "#2dd4bf", name: "BFS" },
-  "dijkstra": { icon: Component, bg: "bg-orange-500/20", color: "text-orange-400", hex: "#fb923c", name: "Dijkstra" }
-};
 
 const DEFAULT_STYLE = (topic: string) => ({
   icon: Hash,
@@ -133,14 +118,7 @@ export default function DashboardOverview() {
   const hasData = topics.length > 0 || questions.length > 0;
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-4" />
-          <p className="text-white/50 text-sm">Loading intelligence...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!hasData) {
@@ -209,15 +187,17 @@ export default function DashboardOverview() {
               <LineChart data={trend} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
                 <XAxis dataKey="month" stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="rgba(255,255,255,0.4)" fontSize={12} tickLine={false} axisLine={false} label={{ value: 'Frequency Score', angle: -90, position: 'insideLeft', fill: 'rgba(255,255,255,0.4)', fontSize: 12, dy: 50 }} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0B0D14', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
                   itemStyle={{ color: '#fff' }}
+                  labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}
                 />
+                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
                 {/* Dynamically render lines based on top 3 topics */}
                 {topics.slice(0, 3).map((t) => {
                    const style = TOPIC_STYLES[t.topic] || DEFAULT_STYLE(t.topic);
-                   return <Line key={t.topic} type="monotone" dataKey={t.topic} name={style.name} stroke={style.hex} strokeWidth={2} dot={false} />;
+                   return <Line key={t.topic} type="monotone" dataKey={t.topic} name={style.name} stroke={style.hex} strokeWidth={2} dot={{ r: 3, fill: '#0B0D14', strokeWidth: 2 }} activeDot={{ r: 5, strokeWidth: 0 }} />;
                 })}
               </LineChart>
             </ResponsiveContainer>
@@ -228,44 +208,56 @@ export default function DashboardOverview() {
           <h2 className="text-base font-semibold text-white mb-6">Difficulty Distribution</h2>
           <div className="flex-1 min-h-[250px] relative flex flex-col items-center justify-center">
             {diffData.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={diffData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={2}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {diffData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#0B0D14', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                      itemStyle={{ color: '#fff' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="text-center">
-                    <span className="block text-2xl font-bold text-white">{dominantDiff?.value}%</span>
-                    <span className="text-xs text-white/50">{dominantDiff?.name}</span>
-                  </div>
-                </div>
-                <div className="flex justify-center gap-4 mt-4 text-xs font-medium text-white/70">
-                  {diffData.map((d) => (
-                    <div key={d.name} className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
-                      {d.name}
+              diffData.filter(d => d.value > 0).length > 1 ? (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={diffData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {diffData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#0B0D14', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-center">
+                      <span className="block text-2xl font-bold text-white">{dominantDiff?.value}%</span>
+                      <span className="text-xs text-white/50">{dominantDiff?.name}</span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="flex justify-center gap-4 mt-4 text-xs font-medium text-white/70">
+                    {diffData.map((d) => (
+                      <div key={d.name} className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
+                        {d.name}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center p-6 bg-white/5 border border-white/10 rounded-xl max-w-[80%]">
+                  <div className="w-12 h-12 rounded-full mb-3 flex items-center justify-center" style={{ backgroundColor: `${dominantDiff?.color}20` }}>
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: dominantDiff?.color }} />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-1">100% {dominantDiff?.name}</h3>
+                  <p className="text-xs text-white/60">
+                    All currently tracked questions for this selection are {dominantDiff?.name} difficulty.
+                  </p>
                 </div>
-              </>
+              )
             ) : (
               <p className="text-white/50 text-sm">No difficulty data.</p>
             )}
@@ -352,11 +344,18 @@ export default function DashboardOverview() {
               </div>
             ))}
             
-            <div className="mt-4 p-4 rounded-xl border border-dashed border-white/20 flex flex-col items-center justify-center text-center">
-              <p className="text-sm text-white/50 mb-2">Placeholder for Phase 8 Optimizer</p>
-              <button disabled className="text-xs font-medium text-white/50 bg-white/5 px-4 py-1.5 rounded-full">
-                Regenerate Plan
-              </button>
+            <div className="mt-4 p-5 rounded-xl border border-white/10 bg-white/[0.02] flex flex-col items-center justify-center text-center relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="text-sm font-semibold text-white mb-1">AI Plan Regeneration</h3>
+              <p className="text-xs text-white/50 mb-3 max-w-[200px]">
+                Dynamic schedule adjustments based on newly ingested OA reports coming next cycle.
+              </p>
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-primary px-2 py-1 rounded bg-primary/20 border border-primary/20">
+                Coming Soon
+              </div>
             </div>
           </div>
         </GlassPanel>

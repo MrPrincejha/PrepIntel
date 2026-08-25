@@ -119,15 +119,15 @@ export function TopBar() {
 
   return (
     <div className="h-16 border-b border-white/10 bg-background/50 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
-      <div className="relative w-72" ref={searchRef}>
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+      <div className="relative w-64 opacity-50 focus-within:opacity-100 transition-opacity" ref={searchRef}>
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
           onFocus={() => setSearchOpen(true)}
           placeholder="Search companies..."
-          className="w-full bg-white/5 border border-white/10 rounded-full py-1.5 pl-9 pr-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-white/30"
+          className="w-full bg-black/40 border border-white/5 rounded-full py-1.5 pl-9 pr-4 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-white/30"
         />
         {searchOpen && searchQuery && (
           <div className="absolute top-full left-0 mt-2 w-full bg-[#0B0D14] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
@@ -171,11 +171,11 @@ function Selector({ label, value, options, onSelect }: { label: string; value: s
     <div className="relative" ref={ref}>
       <button 
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-sm"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors text-sm"
       >
-        <span className="text-white/50">{label}:</span>
-        <span className="font-medium text-white/90">{value}</span>
-        <ChevronDown className="w-4 h-4 text-white/50" />
+        <span className="text-primary/70 font-medium">{label}:</span>
+        <span className="font-semibold text-primary">{value}</span>
+        <ChevronDown className="w-4 h-4 text-primary/70" />
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-48 bg-[#0B0D14] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">

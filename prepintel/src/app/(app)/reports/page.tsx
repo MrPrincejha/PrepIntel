@@ -82,11 +82,21 @@ export default function ReportsPage() {
     }
   }, [showForm, company, role]);
 
+  const [authError, setAuthError] = useState("");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setAuthError("");
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setAuthError("You must be signed in to submit an interview report.");
+        setSubmitting(false);
+        return;
+      }
+
       if (files.length > 0) {
         // Post images to Python backend OCR
         const formData = new FormData();
@@ -94,6 +104,7 @@ export default function ReportsPage() {
         formData.append("company", submitCompany);
         formData.append("role", submitRole);
         formData.append("round", round);
+        formData.append("user_id", user.id);
         
         const res = await fetch(`${API_BASE}/ingest/screenshot`, {
           method: "POST",
@@ -102,7 +113,6 @@ export default function ReportsPage() {
         if (!res.ok) throw new Error("OCR extraction failed");
       } else {
         // Pass text submission to Python backend for LLM refinement
-        const { data: { session } } = await supabase.auth.getSession();
         const res = await fetch(`${API_BASE}/ingest/text`, {
           method: "POST",
           headers: {
@@ -114,7 +124,7 @@ export default function ReportsPage() {
             round: round,
             text: text,
             url: url || undefined,
-            user_id: session?.user?.id || undefined
+            user_id: user.id
           })
         });
         if (!res.ok) throw new Error("Text refinement failed");
@@ -267,6 +277,12 @@ export default function ReportsPage() {
                   />
                 </div>
               </div>
+
+              {authError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400">
+                  {authError}
+                </div>
+              )}
 
               <div className="pt-2 flex justify-end">
                 <GradientButton type="submit" disabled={submitting || (files.length === 0 && !text)}>

@@ -3,6 +3,7 @@
 import { Logo } from "@/components/core/Logo";
 import { GradientButton } from "@/components/core/GradientButton";
 import { GlassPanel } from "@/components/core/GlassPanel";
+import { PublicFooter } from "@/components/core/PublicFooter";
 import { Building2, BrainCircuit, Target, TrendingUp, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -152,20 +153,23 @@ export default function LandingPage() {
 
       {/* Trust bar */}
       <div className="border-t border-white/5 mt-12 py-10 bg-black/20">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-sm font-medium text-white/40 mb-8 uppercase tracking-widest">
-            Trusted by thousands of aspiring software engineers
+        <div className="max-w-7xl mx-auto px-6">
+          <p className="text-center text-sm font-semibold text-white/50 tracking-widest uppercase mb-8">
+            Real OA & Interview Intelligence Covering Top Companies
           </p>
           <div className="flex flex-wrap justify-center gap-12 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-            {/* Using text logos for demo since we don't have SVG assets */}
             {["Google", "Microsoft", "Amazon", "Adobe", "Flipkart", "PayPal"].map(company => (
               <span key={company} className="text-2xl font-bold font-serif tracking-tighter text-white">
                 {company}
               </span>
             ))}
           </div>
+          <p className="text-center text-[10px] text-white/30 mt-6 max-w-2xl mx-auto">
+            Company names and logos are trademarks of their respective owners. PrepIntel is an independent interview-intelligence platform and is not affiliated with, endorsed by, or sponsored by these companies.
+          </p>
         </div>
       </div>
+      <PublicFooter />
     </div>
   );
 }

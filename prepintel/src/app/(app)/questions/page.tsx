@@ -5,21 +5,16 @@ import { useSearchParams } from "next/navigation";
 import { GlassPanel } from "@/components/core/GlassPanel";
 import { TagPill } from "@/components/core/TagPill";
 import { CustomSelect } from "@/components/core/CustomSelect";
+import { DifficultyBadge } from "@/components/core/DifficultyBadge";
+import { ListSkeleton } from "@/components/core/Skeletons";
 import { createClient } from "@/lib/supabase/client";
-import { ChevronDown, ExternalLink, Star, CheckCircle, Circle, PlayCircle, Filter } from "lucide-react";
+import { ChevronDown, ExternalLink, Star, CheckCircle, Circle, PlayCircle, Filter, Sparkles, Info } from "lucide-react";
 import { cn, cleanReportText } from "@/lib/utils";
 import { ReportTextFormatter } from "@/components/core/ReportTextFormatter";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
-const TOPIC_STYLES: Record<string, any> = {
-  "arrays": { name: "Arrays", bg: "bg-blue-500/20", color: "text-blue-400" },
-  "1d-dp": { name: "Dynamic Programming", bg: "bg-violet-500/20", color: "text-violet-400" },
-  "greedy": { name: "Greedy", bg: "bg-amber-500/20", color: "text-amber-400" },
-  "graphs": { name: "Graphs", bg: "bg-fuchsia-500/20", color: "text-fuchsia-400" },
-  "hashing": { name: "Hashing", bg: "bg-green-500/20", color: "text-green-400" },
-  "binary-search": { name: "Binary Search", bg: "bg-cyan-500/20", color: "text-cyan-400" }
-};
+import { TOPIC_STYLES, TOPICS } from "@/lib/topics";
 
 export default function QuestionsPage() {
   const searchParams = useSearchParams();
@@ -169,20 +164,38 @@ export default function QuestionsPage() {
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Questions Explorer</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-white tracking-tight">Questions Explorer</h1>
+            <div className="group relative">
+              <Info className="w-4 h-4 text-white/30 hover:text-white/70 cursor-help transition-colors" />
+              <div className="absolute top-full left-0 mt-2 w-72 p-4 bg-black/95 border border-white/10 rounded-xl text-xs text-white/70 shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-normal">
+                <strong className="block text-white mb-1">Bayesian Scoring Engine</strong>
+                Questions are ranked by a relevance score (0-100) that models their probability of appearing in your upcoming interview. It weighs historical frequency, recent trend velocity, and direct extraction from verified community OA reports.
+              </div>
+            </div>
+          </div>
           <p className="text-white/60 text-sm mt-1 capitalize">{company} · {role} · {cycle}</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer bg-primary/10 border border-primary/20 px-3 py-2 rounded-lg text-sm text-primary font-medium hover:bg-primary/20 transition-colors">
-            <input 
-              type="checkbox" 
-              checked={personalize} 
-              onChange={(e) => setPersonalize(e.target.checked)} 
-              className="accent-primary" 
-            />
-            Personalize for me
-          </label>
+          <div className="group relative">
+            <button 
+              onClick={() => setPersonalize(!personalize)}
+              className={cn(
+                "relative flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-300",
+                personalize ? "bg-primary/20 text-primary border border-primary/30 shadow-[0_0_15px_rgba(var(--primary),0.2)]" : "bg-white/5 text-white/50 border border-white/10 hover:bg-white/10"
+              )}
+            >
+              <Sparkles className={cn("w-4 h-4 transition-transform duration-500", personalize ? "scale-110" : "grayscale opacity-50")} />
+              Personalize for me
+              <div className={cn("w-7 h-4 rounded-full ml-1 relative transition-colors duration-300", personalize ? "bg-primary" : "bg-white/20")}>
+                <div className={cn("absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all duration-300 shadow-sm", personalize ? "left-[14px]" : "left-0.5")} />
+              </div>
+            </button>
+            <div className="absolute top-full left-0 mt-2 w-64 p-3 bg-black/90 border border-white/10 rounded-lg text-xs text-white/70 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+              Reorders questions using your Skill Profile (from Analytics). Prioritizes topics where you have the highest expected return on time.
+            </div>
+          </div>
           <div className="w-px h-6 bg-white/10 mx-1" />
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg pr-1">
             <CustomSelect 
@@ -221,13 +234,14 @@ export default function QuestionsPage() {
         </div>
       </div>
 
-      <GlassPanel className="p-0 overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-white/50">Loading questions...</div>
-        ) : filteredQuestions.length === 0 ? (
-          <div className="p-12 text-center text-white/50">No questions found matching criteria.</div>
-        ) : (
-          <div className="divide-y divide-white/10">
+      {loading ? (
+        <ListSkeleton />
+      ) : (
+        <GlassPanel className="p-0 overflow-hidden">
+          {filteredQuestions.length === 0 ? (
+            <div className="p-12 text-center text-white/50">No questions found matching criteria.</div>
+          ) : (
+            <div className="divide-y divide-white/10">
             {filteredQuestions.map((q) => {
               const isExpanded = expandedId === q.id;
               const isBookmarked = bookmarks.has(q.id);
@@ -268,11 +282,7 @@ export default function QuestionsPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={cn(
-                          "text-xs font-medium",
-                          q.difficulty === "Easy" ? "text-status-success" : 
-                          q.difficulty === "Medium" ? "text-amber-400" : "text-status-error"
-                        )}>{q.difficulty}</span>
+                        <DifficultyBadge level={q.difficulty} />
                         <div className="flex gap-1.5">
                           {q.tags.map((t: string) => <TagPill key={t} label={TOPIC_STYLES[t]?.name || t} />)}
                         </div>
@@ -284,12 +294,17 @@ export default function QuestionsPage() {
                       onClick={() => setExpandedId(isExpanded ? null : q.id)}
                       className="flex items-center gap-4 group"
                     >
-                      <div className={cn(
-                        "px-3 py-1.5 rounded-lg text-sm font-mono font-bold flex flex-col items-center min-w-[60px]",
-                        q.final_recommendation_score >= 90 ? "bg-primary/20 text-primary border border-primary/30" : 
-                        q.final_recommendation_score >= 70 ? "bg-white/10 text-white/90 border border-white/20" : "bg-white/5 text-white/50 border border-white/10"
-                      )}>
-                        {q.final_recommendation_score}
+                      <div className="group relative">
+                        <div className={cn(
+                          "px-2 py-0.5 rounded-md text-xs font-mono font-medium cursor-help",
+                          q.final_recommendation_score >= 90 ? "bg-primary/20 text-primary" : 
+                          q.final_recommendation_score >= 70 ? "bg-white/10 text-white/80" : "bg-white/5 text-white/40"
+                        )}>
+                          {q.final_recommendation_score}
+                        </div>
+                        <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-black/90 border border-white/10 rounded text-[10px] text-white/70 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 whitespace-normal">
+                          Relevance Score: Frequency of this pattern in verified {company} reports, weighted by recency.
+                        </div>
                       </div>
                       <ChevronDown className={cn("w-5 h-5 text-white/30 group-hover:text-white/60 transition-transform", isExpanded && "rotate-180")} />
                     </button>
@@ -350,6 +365,7 @@ export default function QuestionsPage() {
           </div>
         )}
       </GlassPanel>
+      )}
     </div>
   );
 }
