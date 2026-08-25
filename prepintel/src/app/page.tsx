@@ -28,8 +28,8 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <main className="relative z-10 flex-1 flex flex-col lg:flex-row items-center max-w-7xl mx-auto w-full px-6 py-12 gap-12 lg:gap-24">
-        
+      <main className="relative z-10 flex-1 flex flex-col w-full">
+        <div className="flex-1 flex flex-col lg:flex-row items-center max-w-7xl mx-auto w-full px-6 py-12 gap-12 lg:gap-24">
         {/* Left Column (Copy) */}
         <div className="flex-1 flex flex-col items-start gap-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-bold tracking-widest text-primary uppercase">
@@ -149,9 +149,10 @@ export default function LandingPage() {
             Crack Placements
           </motion.div>
         </div>
+        </div>
 
         {/* Trust bar */}
-        <div className="border-t border-white/5 mt-auto py-10 bg-black/20 w-full self-end">
+        <div className="border-t border-white/5 mt-auto py-10 bg-black/20 w-full">
           <div className="max-w-7xl mx-auto px-6">
             <p className="text-center text-sm font-semibold text-white/50 tracking-widest uppercase mb-8">
               Real OA & Interview Intelligence Covering Top Companies
