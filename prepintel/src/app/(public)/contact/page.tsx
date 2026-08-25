@@ -15,12 +15,27 @@ export default function ContactPage() {
           <p>
             Have a question, feedback, or need support? We'd love to hear from you.
           </p>
-          <div className="mt-8 p-6 rounded-2xl bg-white/5 border border-white/10">
-            <h2 className="text-lg font-bold text-white mb-2">Email Support</h2>
-            <p className="mb-4">You can reach our support team directly at:</p>
-            <a href="mailto:support@prepintel.com" className="text-primary hover:underline font-medium">
-              support@prepintel.com
-            </a>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8">
+            <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
+              <h2 className="text-lg font-bold text-white mb-2">Email Support</h2>
+              <p className="mb-4 text-sm">Reach out directly via email:</p>
+              <a href="mailto:support@prepintel.com" className="text-primary hover:underline font-medium">
+                support@prepintel.com
+              </a>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
+              <h2 className="text-lg font-bold text-white mb-2">Connect with the Creator</h2>
+              <p className="mb-4 text-sm">Follow my work or send a message:</p>
+              <div className="flex flex-col gap-2">
+                <a href="https://www.linkedin.com/in/prince-jha-781263282" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                  LinkedIn Profile
+                </a>
+                <a href="http://prince-portfolio-jet.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                  Developer Portfolio
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </main>
