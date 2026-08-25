@@ -34,6 +34,9 @@ export const metadata: Metadata = {
     title: 'PrepIntel | Know What Companies Ask. Prepare Smarter.',
     description: 'The premier placement-intelligence platform.',
   },
+  verification: {
+    google: '6X-zoaeIbTjdRCwG9jhW1ikMR5GsBVU_fEXNQPCIuP4',
+  },
 };
 
 export default function RootLayout({
