@@ -41,7 +41,7 @@ export function NavSidebar() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden md:flex flex-col w-64 bg-[#05060A] border-r border-white/10 h-screen sticky top-0 p-4 shrink-0">
+      <div className="hidden md:flex flex-col w-64 bg-background border-r border-border h-screen sticky top-0 p-4 shrink-0">
         <div className="mb-8 px-2 flex items-center h-12">
           <Logo />
         </div>
@@ -109,7 +109,7 @@ export function NavSidebar() {
       </div>
 
       {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#05060A]/95 backdrop-blur-md border-t border-white/10 z-50 px-2 py-2 flex items-center justify-around overflow-x-auto">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border z-50 px-2 py-2 flex items-center justify-around overflow-x-auto">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || (pathname === "/" && item.href === "/dashboard");
           return (
