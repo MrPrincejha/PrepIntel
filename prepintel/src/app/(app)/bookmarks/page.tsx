@@ -46,14 +46,14 @@ export default function BookmarksPage() {
         }
         
         if (user) {
-          const bRes = await supabase.from('bookmarks').select('question_id').eq('user_id', user.id);
-          if (bRes.data) setBookmarks(new Set(bRes.data.map(b => b.question_id)));
+          const storedBookmarks = localStorage.getItem(`prepintel_bookmarks_${user.id}`);
+          if (storedBookmarks) {
+            try { setBookmarks(new Set(JSON.parse(storedBookmarks))); } catch (e) {}
+          }
           
-          const pRes = await supabase.from('user_progress').select('question_id, status').eq('user_id', user.id);
-          if (pRes.data) {
-            const pMap: Record<string, string> = {};
-            pRes.data.forEach(p => pMap[p.question_id] = p.status);
-            setProgress(pMap);
+          const storedProgress = localStorage.getItem(`prepintel_progress_${user.id}`);
+          if (storedProgress) {
+            try { setProgress(JSON.parse(storedProgress)); } catch (e) {}
           }
         }
       } catch (err) {
@@ -74,7 +74,7 @@ export default function BookmarksPage() {
     if (newBookmarks.has(qId)) {
       newBookmarks.delete(qId);
       setBookmarks(newBookmarks);
-      await supabase.from('bookmarks').delete().match({ user_id: user.id, question_id: qId });
+      localStorage.setItem(`prepintel_bookmarks_${user.id}`, JSON.stringify(Array.from(newBookmarks)));
     }
   };
 

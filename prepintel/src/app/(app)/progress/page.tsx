@@ -45,11 +45,9 @@ export default function ProgressPage() {
         }
         
         if (user) {
-          const pRes = await supabase.from('user_progress').select('question_id, status').eq('user_id', user.id);
-          if (pRes.data) {
-            const pMap: Record<string, string> = {};
-            pRes.data.forEach(p => pMap[p.question_id] = p.status);
-            setProgress(pMap);
+          const storedProgress = localStorage.getItem(`prepintel_progress_${user.id}`);
+          if (storedProgress) {
+            try { setProgress(JSON.parse(storedProgress)); } catch (e) {}
           }
         }
       } catch (err) {
@@ -92,13 +90,9 @@ export default function ProgressPage() {
 
   const setQuestionProgress = async (qId: string, status: string) => {
     if (!user) return alert("Please sign in.");
-    setProgress(prev => ({ ...prev, [qId]: status }));
-    const existing = progress[qId];
-    if (existing) {
-      await supabase.from('user_progress').update({ status }).match({ user_id: user.id, question_id: qId });
-    } else {
-      await supabase.from('user_progress').insert({ user_id: user.id, question_id: qId, status });
-    }
+    const newProgress = { ...progress, [qId]: status };
+    setProgress(newProgress);
+    localStorage.setItem(`prepintel_progress_${user.id}`, JSON.stringify(newProgress));
   };
 
   if (!user) {
