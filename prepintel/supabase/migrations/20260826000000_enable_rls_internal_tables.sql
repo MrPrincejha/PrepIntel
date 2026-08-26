@@ -1,0 +1,5 @@
+ALTER TABLE raw_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE report_topic_observations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE report_question_observations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE source_reliability_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE duplicate_clusters ENABLE ROW LEVEL SECURITY;
