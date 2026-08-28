@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { GlassPanel } from "@/components/core/GlassPanel";
 import { TagPill } from "@/components/core/TagPill";
 import { CustomSelect } from "@/components/core/CustomSelect";
@@ -11,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ChevronDown, ExternalLink, Star, CheckCircle, Circle, PlayCircle, Filter, Sparkles, Info } from "lucide-react";
 import { cn, cleanReportText } from "@/lib/utils";
 import { ReportTextFormatter } from "@/components/core/ReportTextFormatter";
+import { useCachedApi } from "@/lib/useCachedApi";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
@@ -18,13 +20,12 @@ import { TOPIC_STYLES, TOPICS } from "@/lib/topics";
 
 export default function QuestionsPage() {
   const searchParams = useSearchParams();
-  const company = searchParams.get("company") || "amazon";
-  const role = searchParams.get("role") || "sde-1";
-  const cycle = searchParams.get("cycle") || "2025";
+  const company = searchParams.get("company") || "";
+  const role = searchParams.get("role") || "";
+  const cycle = searchParams.get("cycle") || "";
   const supabase = createClient();
 
   const [questions, setQuestions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
 
   // Filters
@@ -37,9 +38,6 @@ export default function QuestionsPage() {
   // User state
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState<Record<string, string>>({});
-  
-  // Expanded row state
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -49,42 +47,37 @@ export default function QuestionsPage() {
     if (storedSkills) {
       try { setSkillProfile(JSON.parse(storedSkills)); } catch (e) {}
     }
-  }, [supabase]);
+  }, []);
+
+  const params = new URLSearchParams();
+  if (company) params.set("company", company);
+  if (role) params.set("role", role);
+  if (cycle) params.set("cycle", cycle);
+  params.set("limit", "100");
+
+  const { data: questionsData, loading } = useCachedApi<any[]>(`${API_BASE}/questions?${params.toString()}`);
 
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setQuestions([]);
-      try {
-        const res = await fetch(`${API_BASE}/questions?company=${company}&role=${role}&cycle=${cycle}&limit=100`);
-        if (res.ok) {
-          const data = await res.json();
-          setQuestions(data);
-        }
-        
-        if (user) {
-          // Fetch bookmarks from local storage
-          const storedBookmarks = localStorage.getItem(`prepintel_bookmarks_${user.id}`);
-          if (storedBookmarks) {
-            try { setBookmarks(new Set(JSON.parse(storedBookmarks))); } catch (e) {}
-          }
-          
-          // Fetch progress from local storage
-          const storedProgress = localStorage.getItem(`prepintel_progress_${user.id}`);
-          if (storedProgress) {
-            try { setProgress(JSON.parse(storedProgress)); } catch (e) {}
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching questions", err);
-      }
-      setLoading(false);
+    if (questionsData) setQuestions(questionsData);
+  }, [questionsData]);
+
+  useEffect(() => {
+    if (!user) return;
+    const storedBookmarks = localStorage.getItem(`prepintel_bookmarks_${user.id}`);
+    if (storedBookmarks) {
+      try { setBookmarks(new Set(JSON.parse(storedBookmarks))); } catch (e) {}
     }
-    fetchData();
-  }, [company, role, cycle, user, supabase]);
+    const storedProgress = localStorage.getItem(`prepintel_progress_${user.id}`);
+    if (storedProgress) {
+      try { setProgress(JSON.parse(storedProgress)); } catch (e) {}
+    }
+  }, [user]);
+
+  const [companyFilter, setCompanyFilter] = useState("All");
 
   const filteredQuestions = useMemo(() => {
     let result = questions.filter(q => {
+      if (companyFilter !== "All" && q.company?.toLowerCase() !== companyFilter.toLowerCase()) return false;
       if (difficultyFilter !== "All" && q.difficulty !== difficultyFilter) return false;
       if (topicFilter !== "All" && !q.tags.includes(topicFilter)) return false;
       if (onlyBookmarked && !bookmarks.has(q.id)) return false;
@@ -190,11 +183,27 @@ export default function QuestionsPage() {
             </div>
           </div>
           <div className="w-px h-6 bg-white/10 mx-1" />
+
+          {!company && (
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg pr-1">
+              <CustomSelect 
+                value={companyFilter}
+                onChange={setCompanyFilter}
+                icon={<Filter className="w-4 h-4" />}
+                options={[
+                  { value: "All", label: "All Companies" },
+                  ...Array.from(new Set(questions.map(q => q.company).filter(Boolean))).map(c => ({
+                    value: String(c), label: String(c).charAt(0).toUpperCase() + String(c).slice(1)
+                  }))
+                ]}
+              />
+            </div>
+          )}
+
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg pr-1">
             <CustomSelect 
               value={difficultyFilter}
               onChange={setDifficultyFilter}
-              icon={<Filter className="w-4 h-4" />}
               options={[
                 { value: "All", label: "All Difficulties" },
                 { value: "Easy", label: "Easy" },
@@ -231,131 +240,86 @@ export default function QuestionsPage() {
         <ListSkeleton />
       ) : (
         <GlassPanel className="p-0 overflow-hidden">
-          {filteredQuestions.length === 0 ? (
-            <div className="p-12 text-center text-white/50">No questions found matching criteria.</div>
-          ) : (
-            <div className="divide-y divide-white/10">
-            {filteredQuestions.map((q) => {
-              const isExpanded = expandedId === q.id;
-              const isBookmarked = bookmarks.has(q.id);
-              const pStatus = progress[q.id] || "not_started";
-              
-              return (
-                <div key={q.id} className="flex flex-col transition-colors hover:bg-white/[0.02]">
-                  <div className="p-4 flex flex-col md:flex-row md:items-center gap-4">
-                    
-                    {/* Status & Actions */}
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => toggleBookmark(q.id)} className="p-1 text-white/40 hover:text-amber-400 transition-colors">
-                        <Star className={cn("w-5 h-5", isBookmarked && "fill-amber-400 text-amber-400")} />
-                      </button>
-                      <button 
-                        onClick={() => setQuestionProgress(q.id, pStatus === 'solved' ? 'not_started' : 'solved')}
-                        className="p-1 text-white/40 hover:text-status-success transition-colors"
-                      >
-                        {pStatus === 'solved' ? <CheckCircle className="w-5 h-5 text-status-success" /> : 
-                         pStatus === 'attempted' ? <PlayCircle className="w-5 h-5 text-amber-400" /> :
-                         <Circle className="w-5 h-5" />}
-                      </button>
-                    </div>
-
-                    {/* Core Info */}
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => setExpandedId(isExpanded ? null : q.id)}
-                          className="text-base font-medium text-white hover:text-primary transition-colors flex items-center gap-1.5 truncate text-left"
-                        >
-                          {q.title}
-                        </button>
-                        {personalize && q._gapReason && (
-                          <span className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded bg-primary/20 text-primary ml-2 border border-primary/30">
-                            Priority boost: {TOPIC_STYLES[q._gapReason]?.name || q._gapReason} gap
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <DifficultyBadge level={q.difficulty} />
-                        <div className="flex gap-1.5">
-                          {q.tags.map((t: string) => <TagPill key={t} label={TOPIC_STYLES[t]?.name || t} />)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Score Badge */}
-                    <button 
-                      onClick={() => setExpandedId(isExpanded ? null : q.id)}
-                      className="flex items-center gap-4 group"
-                    >
-                      <div className="group relative">
-                        <div className={cn(
-                          "px-2 py-0.5 rounded-md text-xs font-mono font-medium cursor-help",
-                          q.final_recommendation_score >= 90 ? "bg-primary/20 text-primary" : 
-                          q.final_recommendation_score >= 70 ? "bg-white/10 text-white/80" : "bg-white/5 text-white/40"
-                        )}>
-                          {q.final_recommendation_score}
-                        </div>
-                        <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-black/90 border border-white/10 rounded text-[10px] text-white/70 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 whitespace-normal">
-                          Relevance Score: Frequency of this pattern in verified {company} reports, weighted by recency.
-                        </div>
-                      </div>
-                      <ChevronDown className={cn("w-5 h-5 text-white/30 group-hover:text-white/60 transition-transform", isExpanded && "rotate-180")} />
-                    </button>
-                  </div>
-
-                  {/* Expandable Explainability Drawer */}
-                  {isExpanded && (
-                    <div className="px-4 pb-4 md:px-16 animate-in slide-in-from-top-2 fade-in duration-200">
-                      <div className="bg-[#05060A] border border-white/10 rounded-xl p-4">
-                        <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                          Why was this question recommended?
-                        </h4>
-                        <ul className="space-y-2 text-sm text-white/70 mb-6">
-                          {getExplanation(q).map((line, idx) => {
-                            const [boldPart, rest] = line.split("): ");
-                            return (
-                              <li key={idx} className="flex gap-2">
-                                <span className="text-white/30">•</span>
-                                <span>
-                                  <span className="font-medium text-white/90">{boldPart}): </span>
-                                  {rest}
-                                </span>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                        
-                        {q.raw_text && (
-                          <div className="mt-4 pt-4 border-t border-white/10">
-                            <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                              Full Problem Description
-                            </h4>
-                            <div className="bg-white/5 rounded-lg p-4 max-h-[400px] overflow-y-auto mt-2 border border-white/5">
-                              <ReportTextFormatter text={cleanReportText(q.raw_text)} />
-                            </div>
-                          </div>
-                        )}
-                        
-                        <div className="mt-6 flex gap-2">
-                          <button 
-                            onClick={() => setQuestionProgress(q.id, 'attempted')}
-                            className={cn(
-                              "text-xs px-3 py-1.5 rounded-md font-medium transition-colors border",
-                              pStatus === 'attempted' ? "bg-amber-400/20 text-amber-400 border-amber-400/30" : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"
-                            )}
-                          >
-                            Mark as Attempting
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          {/* Header Row for columns */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-black/20 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="pl-24">Question & Tags</div>
+            <div className="pr-4">Match Score</div>
           </div>
+          {filteredQuestions.length === 0 ? (
+            <div className="p-12 text-center text-muted-foreground">No questions found matching criteria.</div>
+          ) : (
+            <div className="divide-y divide-border">
+              {filteredQuestions.map((q) => {
+                const isBookmarked = bookmarks.has(q.id);
+                const pStatus = progress[q.id] || "not_started";
+                
+                return (
+                  <div key={q.id} className="flex flex-col transition-colors hover:bg-white/[0.02]">
+                    <div className="p-4 flex flex-col md:flex-row md:items-center gap-4">
+                      
+                      {/* Status & Actions */}
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => toggleBookmark(q.id)} className="p-1 text-muted-foreground hover:text-amber-400 transition-colors">
+                          <Star className={cn("w-5 h-5", isBookmarked && "fill-amber-400 text-amber-400")} />
+                        </button>
+                        <button 
+                          onClick={() => setQuestionProgress(q.id, pStatus === 'solved' ? 'not_started' : 'solved')}
+                          className="p-1 text-muted-foreground hover:text-status-success transition-colors"
+                        >
+                          {pStatus === 'solved' ? <CheckCircle className="w-5 h-5 text-status-success" /> : 
+                           pStatus === 'attempted' ? <PlayCircle className="w-5 h-5 text-amber-400" /> :
+                           <Circle className="w-5 h-5" />}
+                        </button>
+                      </div>
+
+                      {/* Core Info */}
+                      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <Link 
+                            href={`/questions/${q.id}?${searchParams.toString()}`}
+                            className="text-base font-medium text-foreground hover:text-primary transition-colors flex items-center gap-1.5 truncate text-left"
+                          >
+                            {q.title}
+                          </Link>
+                          {personalize && q._gapReason && (
+                            <span className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded bg-primary/20 text-primary ml-2 border border-primary/30">
+                              Priority boost: {TOPIC_STYLES[q._gapReason]?.name || q._gapReason} gap
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <DifficultyBadge level={q.difficulty} />
+                          {q.company && (
+                            <span className="text-xs text-muted-foreground border border-border px-2 py-0.5 rounded-md font-medium uppercase tracking-wider bg-black/20">
+                              {q.company}
+                            </span>
+                          )}
+                          <div className="flex gap-1.5 ml-1">
+                            {q.tags.map((t: string) => <TagPill key={t} label={TOPIC_STYLES[t]?.name || t} />)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Score Badge */}
+                      <div className="flex items-center gap-4 group pr-4">
+                        <div className="group relative">
+                          <div className={cn(
+                            "px-3 py-1 rounded-md text-sm font-mono font-medium cursor-help",
+                            q.final_recommendation_score >= 90 ? "bg-primary/20 text-primary" : 
+                            q.final_recommendation_score >= 70 ? "bg-white/10 text-white/80" : "bg-white/5 text-muted-foreground"
+                          )}>
+                            {q.final_recommendation_score}
+                          </div>
+                          <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-black/90 border border-white/10 rounded text-[10px] text-white/70 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 whitespace-normal">
+                            Relevance Score: Frequency of this pattern in verified reports, weighted by recency.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
         )}
       </GlassPanel>
       )}

@@ -43,7 +43,7 @@ export function TopBar() {
       }
     }
     fetchData();
-  }, [supabase]);
+  }, []);
 
   // Sync to URL and localStorage
   const updateUrl = useCallback((key: string, value: string) => {

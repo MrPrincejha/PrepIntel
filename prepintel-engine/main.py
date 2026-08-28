@@ -177,8 +177,15 @@ def get_trend(company: str, role: str, topic: str, months: int = 12):
         
     return {"monthly_data": data}
 
+QUESTIONS_CACHE = {}
+
 @app.get("/api/questions")
-def get_questions(company: str, role: str, cycle: str, limit: int = 50):
+def get_questions(company: str = "", role: str = "", cycle: str = "", limit: int = 50):
+    cache_key = f"{company}_{role}_{cycle}_{limit}"
+    now = time.time()
+    if cache_key in QUESTIONS_CACHE and now - QUESTIONS_CACHE[cache_key]['time'] < 300: # 5 min cache
+        return QUESTIONS_CACHE[cache_key]['data']
+
     reports = fetch_raw_reports(company, role)
     topic_probs = analyze_topics_from_text(reports) if reports else {}
     
@@ -267,6 +274,7 @@ def get_questions(company: str, role: str, cycle: str, limit: int = 50):
             dynamic_questions.append({
                 "id": f"dyn_q{question_idx}",
                 "title": title,
+                "company": r.get("company", company),
                 "raw_text": text,
                 "tags": list(set(q_tags)),
                 "difficulty": diff,
@@ -310,8 +318,9 @@ def get_questions(company: str, role: str, cycle: str, limit: int = 50):
         if q['title'] not in seen_titles:
             seen_titles.add(q['title'])
             unique_q.append(q)
-            
-    return unique_q[:limit]
+    result = unique_q[:limit]
+    QUESTIONS_CACHE[cache_key] = {'time': time.time(), 'data': result}
+    return result
 
 @app.post("/api/prep-plan")
 def generate_prep_plan(req: PrepPlanRequest):
@@ -395,3 +404,172 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+PROGRESS_CACHE = {}
+import time
+import requests
+from datetime import datetime, timezone
+import datetime as dt_lib
+
+@app.get("/api/progress/unified")
+def get_unified_progress(lc_handle: str = "", cf_handle: str = ""):
+    cache_key = f"{lc_handle}_{cf_handle}"
+    now = time.time()
+    
+    if cache_key in PROGRESS_CACHE and now - PROGRESS_CACHE[cache_key]['time'] < 3600:
+        return PROGRESS_CACHE[cache_key]['data']
+        
+    unified_data = {
+        "leetcode": {"accuracy": 0, "solved": 0},
+        "codeforces": {"accuracy": 0, "solved": 0},
+        "heatmap": [],
+        "recent_activity": [],
+        "overall_accuracy": 0,
+        "combined_streak": 0,
+        "max_streak": 0
+    }
+    
+    daily_activity = {}
+    recent_subs = []
+    
+    if lc_handle:
+        try:
+            lc_query = """
+            query getUserProfile($username: String!) {
+              matchedUser(username: $username) {
+                submitStats {
+                  acSubmissionNum { difficulty count submissions }
+                }
+                userCalendar {
+                  submissionCalendar
+                }
+              }
+              recentSubmissionList(username: $username, limit: 5) {
+                title
+                titleSlug
+                timestamp
+                statusDisplay
+              }
+            }
+            """
+            lc_res = requests.post("https://leetcode.com/graphql", json={
+                "query": lc_query,
+                "variables": {"username": lc_handle}
+            }, headers={"Content-Type": "application/json"}, timeout=10)
+            
+            if lc_res.status_code == 200:
+                lc_data = lc_res.json().get("data", {})
+                matched = lc_data.get("matchedUser")
+                if matched:
+                    stats = matched.get("submitStats", {}).get("acSubmissionNum", [])
+                    total_ac = sum(s.get("count", 0) for s in stats if s.get("difficulty") == "All")
+                    total_sub = sum(s.get("submissions", 0) for s in stats if s.get("difficulty") == "All")
+                    acc = round((total_ac / total_sub * 100) if total_sub > 0 else 0)
+                    
+                    unified_data["leetcode"]["accuracy"] = acc
+                    unified_data["leetcode"]["solved"] = total_ac
+                    
+                    calendar_str = matched.get("userCalendar", {}).get("submissionCalendar", "{}")
+                    import json
+                    calendar = json.loads(calendar_str)
+                    for ts_str, count in calendar.items():
+                        ts = int(ts_str)
+                        dt = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+                        daily_activity[dt] = daily_activity.get(dt, 0) + count
+                
+                for sub in lc_data.get("recentSubmissionList", []):
+                    recent_subs.append({
+                        "platform": "LC",
+                        "title": sub.get("title"),
+                        "timestamp": int(sub.get("timestamp", 0)),
+                        "status": sub.get("statusDisplay")
+                    })
+        except Exception as e:
+            print("LC fetch error:", e)
+
+    if cf_handle:
+        try:
+            cf_res = requests.get(f"https://codeforces.com/api/user.status?handle={cf_handle}", timeout=10)
+            if cf_res.status_code == 200:
+                subs = cf_res.json().get("result", [])
+                
+                total_subs = len(subs)
+                ac_subs = sum(1 for s in subs if s.get("verdict") == "OK")
+                acc = round((ac_subs / total_subs * 100) if total_subs > 0 else 0)
+                
+                unique_solved = len(set(s.get("problem", {}).get("name") for s in subs if s.get("verdict") == "OK"))
+                
+                unified_data["codeforces"]["accuracy"] = acc
+                unified_data["codeforces"]["solved"] = unique_solved
+                
+                for s in subs:
+                    ts = s.get("creationTimeSeconds", 0)
+                    dt = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+                    daily_activity[dt] = daily_activity.get(dt, 0) + 1
+                    
+                for s in subs[:5]:
+                    recent_subs.append({
+                        "platform": "CF",
+                        "title": s.get("problem", {}).get("name", "Unknown"),
+                        "timestamp": s.get("creationTimeSeconds", 0),
+                        "status": "Accepted" if s.get("verdict") == "OK" else "Attempted"
+                    })
+        except Exception as e:
+            print("CF fetch error:", e)
+            
+    recent_subs.sort(key=lambda x: x["timestamp"], reverse=True)
+    unified_data["recent_activity"] = recent_subs[:5]
+            
+    lc_solved = unified_data["leetcode"]["solved"]
+    cf_solved = unified_data["codeforces"]["solved"]
+    total_solved = lc_solved + cf_solved
+    
+    if total_solved > 0:
+        overall_acc = (unified_data["leetcode"]["accuracy"] * lc_solved + unified_data["codeforces"]["accuracy"] * cf_solved) / total_solved
+        unified_data["overall_accuracy"] = round(overall_acc)
+    
+    sorted_dates = sorted(daily_activity.keys())
+    today = dt_lib.datetime.now(dt_lib.timezone.utc).date()
+    
+    heatmap = []
+    # 60 days
+    for i in range(59, -1, -1):
+        d = today - dt_lib.timedelta(days=i)
+        d_str = d.strftime("%Y-%m-%d")
+        heatmap.append({
+            "date": d_str,
+            "count": daily_activity.get(d_str, 0)
+        })
+    unified_data["heatmap"] = heatmap
+    
+    current_streak = 0
+    max_streak = 0
+    temp_streak = 0
+    last_date = None
+    
+    for date_str in sorted_dates:
+        d = dt_lib.datetime.strptime(date_str, "%Y-%m-%d").date()
+        if last_date is None:
+            temp_streak = 1
+        else:
+            diff = (d - last_date).days
+            if diff == 1:
+                temp_streak += 1
+            elif diff > 1:
+                temp_streak = 1
+        
+        if temp_streak > max_streak:
+            max_streak = temp_streak
+            
+        last_date = d
+        
+    if last_date:
+        diff_today = (today - last_date).days
+        if diff_today <= 1:
+            current_streak = temp_streak
+            
+    unified_data["combined_streak"] = current_streak
+    unified_data["max_streak"] = max_streak
+    
+    PROGRESS_CACHE[cache_key] = {'time': now, 'data': unified_data}
+    return unified_data

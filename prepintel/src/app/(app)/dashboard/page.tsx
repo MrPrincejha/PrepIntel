@@ -5,13 +5,14 @@ import { GlassPanel } from "@/components/core/GlassPanel";
 import { ConfidenceBadge } from "@/components/core/ConfidenceBadge";
 import { TagPill } from "@/components/core/TagPill";
 import { DashboardSkeleton } from "@/components/core/Skeletons";
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { Layers, Hash, GitBranch, ArrowRight, Network, Search, Component, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { TOPIC_STYLES } from "@/lib/topics";
+import { TOPIC_STYLES, TOPIC_CATEGORIES } from "@/lib/topics";
+import { createClient } from "@/lib/supabase/client";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
@@ -24,6 +25,8 @@ const DEFAULT_STYLE = (topic: string) => ({
 });
 
 export default function DashboardOverview() {
+  const router = useRouter();
+  const supabase = createClient();
   const searchParams = useSearchParams();
   const company = searchParams.get("company");
   const role = searchParams.get("role");
@@ -41,11 +44,17 @@ export default function DashboardOverview() {
   const [skillProfile, setSkillProfile] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        router.push("/login");
+      }
+    });
+
     const storedSkills = localStorage.getItem("prepintel_skill_profile");
     if (storedSkills) {
       try { setSkillProfile(JSON.parse(storedSkills)); } catch (e) {}
     }
-  }, []);
+  }, [router, supabase]);
 
   useEffect(() => {
     if (!company || !role || !cycle) return;
@@ -107,10 +116,16 @@ export default function DashboardOverview() {
     }).sort((a, b) => b._personalizedScore - a._personalizedScore);
   }, [questions, personalize, skillProfile]);
 
-  if (!company || !role || !cycle) {
+  if (!company) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <p className="text-white/50 text-sm">Please select a Company, Role, and Year.</p>
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center max-w-md mx-auto">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+          <Search className="w-8 h-8 text-primary opacity-80" />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground mb-3">No Company Selected</h2>
+        <p className="text-muted-foreground mb-8 text-sm">
+          Please select a company from the top bar to view verified OA trends, question patterns, and build your dashboard.
+        </p>
       </div>
     );
   }
@@ -205,61 +220,53 @@ export default function DashboardOverview() {
         </GlassPanel>
 
         <GlassPanel className="p-6 flex flex-col">
-          <h2 className="text-base font-semibold text-white mb-6">Difficulty Distribution</h2>
+          <h2 className="text-base font-semibold text-white mb-6">Skill Profile</h2>
           <div className="flex-1 min-h-[250px] relative flex flex-col items-center justify-center">
-            {diffData.length > 0 ? (
-              diffData.filter(d => d.value > 0).length > 1 ? (
-                <>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={diffData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={2}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {diffData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#0B0D14', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                        itemStyle={{ color: '#fff' }}
+            {Object.keys(skillProfile).length > 0 ? (() => {
+              // Calculate a simple overall readiness score
+              let totalScore = 0;
+              let totalExpected = 0;
+              TOPIC_CATEGORIES.forEach(c => {
+                c.topics.forEach(t => {
+                  totalExpected += 100;
+                  const lvl = skillProfile[t.id];
+                  if (lvl === "Strong") totalScore += 95;
+                  else if (lvl === "Medium") totalScore += 60;
+                  else if (lvl === "Weak") totalScore += 20;
+                });
+              });
+              const readiness = Math.round((totalScore / (totalExpected || 1)) * 100);
+              
+              return (
+                <div className="flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="relative flex items-center justify-center w-32 h-32">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="64" cy="64" r="58" className="stroke-white/10" strokeWidth="12" fill="none" />
+                      <circle 
+                        cx="64" cy="64" r="58" 
+                        className="stroke-primary transition-all duration-1000 ease-out" 
+                        strokeWidth="12" fill="none" 
+                        strokeDasharray="364" 
+                        strokeDashoffset={364 - (364 * readiness) / 100}
+                        strokeLinecap="round"
                       />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="text-center">
-                      <span className="block text-2xl font-bold text-white">{dominantDiff?.value}%</span>
-                      <span className="text-xs text-white/50">{dominantDiff?.name}</span>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-3xl font-bold text-foreground">{readiness}%</span>
+                      <span className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mt-1">Ready</span>
                     </div>
                   </div>
-                  <div className="flex justify-center gap-4 mt-4 text-xs font-medium text-white/70">
-                    {diffData.map((d) => (
-                      <div key={d.name} className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }} />
-                        {d.name}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center text-center p-6 bg-white/5 border border-white/10 rounded-xl max-w-[80%]">
-                  <div className="w-12 h-12 rounded-full mb-3 flex items-center justify-center" style={{ backgroundColor: `${dominantDiff?.color}20` }}>
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: dominantDiff?.color }} />
-                  </div>
-                  <h3 className="text-lg font-bold text-white mb-1">100% {dominantDiff?.name}</h3>
-                  <p className="text-xs text-white/60">
-                    All currently tracked questions for this selection are {dominantDiff?.name} difficulty.
-                  </p>
+                  
+                  <Link href={`/analytics?company=${company}&role=${role}&cycle=${cycle}`} className="mt-4 text-xs font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
+                    View full breakdown <ArrowRight className="w-3 h-3" />
+                  </Link>
                 </div>
-              )
-            ) : (
-              <p className="text-white/50 text-sm">No difficulty data.</p>
+              );
+            })() : (
+              <div className="text-center">
+                <p className="text-sm text-white/50 mb-3">No skill profile generated.</p>
+                <Link href={`/analytics?company=${company}&role=${role}&cycle=${cycle}`} className="text-primary hover:underline text-sm font-medium">Complete Self-Assessment</Link>
+              </div>
             )}
           </div>
         </GlassPanel>
@@ -344,18 +351,17 @@ export default function DashboardOverview() {
               </div>
             ))}
             
-            <div className="mt-4 p-5 rounded-xl border border-white/10 bg-white/[0.02] flex flex-col items-center justify-center text-center relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                <Sparkles className="w-5 h-5 text-primary" />
+            <div className="mt-4 p-5 rounded-xl border border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center text-center">
+              <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-3">
+                <Sparkles className="w-5 h-5 text-muted-foreground opacity-50" />
               </div>
-              <h3 className="text-sm font-semibold text-white mb-1">AI Plan Regeneration</h3>
-              <p className="text-xs text-white/50 mb-3 max-w-[200px]">
+              <h3 className="text-sm font-semibold text-muted-foreground mb-1">AI Plan Regeneration</h3>
+              <p className="text-xs text-muted-foreground/70 mb-4 max-w-[220px]">
                 Dynamic schedule adjustments based on newly ingested OA reports coming next cycle.
               </p>
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-primary px-2 py-1 rounded bg-primary/20 border border-primary/20">
-                Coming Soon
-              </div>
+              <button className="text-[11px] font-medium text-foreground px-4 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                Notify me when live
+              </button>
             </div>
           </div>
         </GlassPanel>

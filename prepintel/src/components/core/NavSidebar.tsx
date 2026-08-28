@@ -8,6 +8,15 @@ import { Logo } from "./Logo";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+const stringToColor = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+  return '#' + '00000'.substring(0, 6 - c.length) + c;
+};
+
 const NAV_ITEMS = [
   { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { name: "Questions", href: "/questions", icon: ListTodo },
@@ -32,7 +41,7 @@ export function NavSidebar() {
       setUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, []);
 
   // Build the query string to append to links
   const qs = searchParams.toString();
@@ -56,7 +65,7 @@ export function NavSidebar() {
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group relative overflow-hidden",
                   isActive
                     ? "bg-primary/10 text-primary shadow-[inset_2px_0_0_0_var(--primary)]"
-                    : "text-white/60 hover:text-white hover:bg-white/5"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 )}
               >
                 {isActive && (
@@ -64,7 +73,7 @@ export function NavSidebar() {
                 )}
                 <item.icon className={cn(
                   "w-5 h-5 relative z-10 transition-transform duration-300",
-                  isActive ? "text-primary" : "text-white/40 group-hover:text-white group-hover:scale-110"
+                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground group-hover:scale-110"
                 )} />
                 <span className="relative z-10">{item.name}</span>
               </Link>
@@ -72,35 +81,40 @@ export function NavSidebar() {
           })}
         </nav>
         
-        <div className="pt-4 border-t border-white/10 mt-auto flex flex-col gap-2">
+        <div className="pt-4 border-t border-border mt-auto flex flex-col gap-2">
           {user?.email?.toLowerCase() === "princejha200490@gmail.com" && (
             <Link
               href="/admin"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition-all group"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all group"
             >
-              <Settings className="w-5 h-5 text-white/40 group-hover:text-white/70 transition-colors" />
+              <Settings className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
               Admin Queue
             </Link>
           )}
           
           {user ? (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer mt-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-primary flex items-center justify-center overflow-hidden shrink-0">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-white/5 transition-colors cursor-pointer mt-2">
+              <div 
+                className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden shrink-0"
+                style={{ backgroundColor: user.user_metadata?.avatar_url ? 'transparent' : stringToColor(user.email || 'user') }}
+              >
                 {user.user_metadata?.avatar_url ? (
                   <img src={user.user_metadata.avatar_url} alt="User avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-4 h-4 text-white" />
+                  <span className="text-white font-bold text-sm">
+                    {(user.user_metadata?.full_name || user.email || "U").charAt(0).toUpperCase()}
+                  </span>
                 )}
               </div>
               <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-sm font-medium text-white truncate">{user.user_metadata?.full_name || user.email?.split('@')[0] || "User"}</span>
-                <span className="text-xs text-white/50">View Profile</span>
+                <span className="text-sm font-medium text-foreground truncate">{user.user_metadata?.full_name || user.email?.split('@')[0] || "User"}</span>
+                <span className="text-xs text-muted-foreground">View Profile</span>
               </div>
             </div>
           ) : (
-            <Link href="/login" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white hover:bg-white/5 transition-all mt-2">
+            <Link href="/login" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-white/5 transition-all mt-2">
               <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                <User className="w-4 h-4 text-white/60" />
+                <User className="w-4 h-4 text-muted-foreground" />
               </div>
               Sign In
             </Link>
@@ -118,7 +132,7 @@ export function NavSidebar() {
               href={`${item.href}${suffix}`}
               className={cn(
                 "flex flex-col items-center gap-1 p-2 min-w-[64px] rounded-lg transition-colors",
-                isActive ? "text-primary" : "text-white/50 hover:text-white"
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "opacity-70")} />

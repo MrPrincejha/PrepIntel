@@ -1,224 +1,338 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { GlassPanel } from "@/components/core/GlassPanel";
-import { TagPill } from "@/components/core/TagPill";
 import { CustomSelect } from "@/components/core/CustomSelect";
-import { ListSkeleton } from "@/components/core/Skeletons";
 import { createClient } from "@/lib/supabase/client";
-import { CheckCircle, Circle, PlayCircle, ExternalLink, Target, Filter, ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Target, Filter, ArrowRight, CheckCircle, Flame, Trophy, PlayCircle, ExternalLink, Code2 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { TOPIC_STYLES } from "@/lib/topics";
+import { useCachedApi } from "@/lib/useCachedApi";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
 
-import { TOPIC_STYLES, TOPICS } from "@/lib/topics";
-
 export default function ProgressPage() {
   const searchParams = useSearchParams();
-  const company = searchParams.get("company") || "amazon";
-  const role = searchParams.get("role") || "sde-1";
-  const cycle = searchParams.get("cycle") || "2025";
-  const supabase = createClient();
-
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [progress, setProgress] = useState<Record<string, string>>({});
+  const company = searchParams.get("company") || "";
+  const role = searchParams.get("role") || "";
+  const cycle = searchParams.get("cycle") || "";
+  
   const [topicFilter, setTopicFilter] = useState("All");
+  const supabase = createClient();
+  const [user, setUser] = useState<any>(null);
+  
+  const [progress, setProgress] = useState<Record<string, string>>({});
+  const [questions, setQuestions] = useState<any[]>([]);
+  
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [lcHandle, setLcHandle] = useState("");
+  const [cfHandle, setCfHandle] = useState("");
+  const [unifiedStats, setUnifiedStats] = useState<any>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-    });
-  }, [supabase]);
-
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        const res = await fetch(`${API_BASE}/questions?company=${company}&role=${role}&cycle=${cycle}&limit=100`);
-        if (res.ok) {
-          const data = await res.json();
-          setQuestions(data);
+      if (session?.user) {
+        const stored = localStorage.getItem(`prepintel_progress_${session.user.id}`);
+        if (stored) {
+          try { setProgress(JSON.parse(stored)); } catch (e) {}
         }
         
-        if (user) {
-          const storedProgress = localStorage.getItem(`prepintel_progress_${user.id}`);
-          if (storedProgress) {
-            try { setProgress(JSON.parse(storedProgress)); } catch (e) {}
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching", err);
+        const lc = localStorage.getItem(`prepintel_lc_${session.user.id}`) || "";
+        const cf = localStorage.getItem(`prepintel_cf_${session.user.id}`) || "";
+        setLcHandle(lc);
+        setCfHandle(cf);
       }
-      setLoading(false);
-    }
-    fetchData();
-  }, [company, role, cycle, user, supabase]);
-
-  const stats = useMemo(() => {
-    let total = 0;
-    let solved = 0;
-    let attempted = 0;
-    
-    questions.forEach(q => {
-      if (topicFilter !== "All" && !q.tags.includes(topicFilter)) return;
-      total++;
-      const s = progress[q.id];
-      if (s === 'solved') solved++;
-      else if (s === 'attempted') attempted++;
     });
-    
-    return {
-      total,
-      solved,
-      attempted,
-      not_started: total - solved - attempted,
-      solved_pct: total === 0 ? 0 : Math.round((solved / total) * 100),
-      attempted_pct: total === 0 ? 0 : Math.round((attempted / total) * 100)
-    };
-  }, [questions, progress, topicFilter]);
+  }, []);
 
-  const attemptedQuestions = useMemo(() => {
-    return questions.filter(q => {
-      if (topicFilter !== "All" && !q.tags.includes(topicFilter)) return false;
-      return progress[q.id] === 'attempted' || progress[q.id] === 'solved';
-    });
-  }, [questions, progress, topicFilter]);
+  const { data: questionsData, loading: qLoading } = useCachedApi<any[]>(
+    user ? `${API_BASE}/questions?company=${company}&role=${role}&cycle=${cycle}&limit=50` : null
+  );
 
-  const setQuestionProgress = async (qId: string, status: string) => {
-    if (!user) return alert("Please sign in.");
-    const newProgress = { ...progress, [qId]: status };
-    setProgress(newProgress);
-    localStorage.setItem(`prepintel_progress_${user.id}`, JSON.stringify(newProgress));
-  };
+  const { data: statsData } = useCachedApi<any>(
+    user && (lcHandle || cfHandle) ? `${API_BASE}/progress/unified?lc_handle=${lcHandle}&cf_handle=${cfHandle}` : null
+  );
+
+  useEffect(() => {
+    if (questionsData) setQuestions(questionsData);
+    if (statsData) setUnifiedStats(statsData);
+  }, [questionsData, statsData]);
+
+  // wait a bit for user to load if undefined
+  if (user === null) return null;
 
   if (!user) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center space-y-4">
           <Target className="w-12 h-12 text-primary mx-auto opacity-50" />
-          <h2 className="text-xl font-bold text-white">Sign in to track Progress</h2>
-          <p className="text-white/50 text-sm max-w-sm mx-auto">Your study progress will appear here once you create an account.</p>
+          <h2 className="text-xl font-bold text-foreground">Sign in to track Progress</h2>
+          <p className="text-muted-foreground text-sm max-w-sm mx-auto">Your study progress will appear here once you create an account.</p>
         </div>
       </div>
     );
   }
 
+  // Derived Stats
+  const totalRelevant = questions.length || 1;
+  const localSolvedCount = Object.values(progress).filter(v => v === 'solved').length;
+  const overallPct = Math.round((localSolvedCount / totalRelevant) * 100) || 0;
+  
+  const solvedCount = unifiedStats ? unifiedStats.leetcode.solved + unifiedStats.codeforces.solved : localSolvedCount;
+  
+  const streak = unifiedStats?.combined_streak || 0;
+  const maxStreak = unifiedStats?.max_streak || 0;
+  
+  const overallAcc = unifiedStats?.overall_accuracy || 0;
+  const lcAcc = unifiedStats?.leetcode?.accuracy || 0;
+  const cfAcc = unifiedStats?.codeforces?.accuracy || 0;
+
+  // Heatmap Data (last 60 days)
+  const heatmapData = unifiedStats?.heatmap || Array.from({ length: 60 }, (_, i) => {
+    const d = new Date(Date.now() - (59 - i) * 24 * 60 * 60 * 1000);
+    return {
+      date: d.toISOString().split('T')[0],
+      count: 0
+    };
+  });
+
+  const solvesThisWeek = heatmapData.slice(-7).reduce((sum: number, day: any) => sum + (day.count || 0), 0);
+
+  // Recent Activity
+  const recentActivity = unifiedStats?.recent_activity?.length > 0 
+    ? unifiedStats.recent_activity.map((a: any, i: number) => {
+        const diff = Math.floor((Date.now() - a.timestamp * 1000) / 1000);
+        let timeStr = "";
+        if (diff < 3600) timeStr = `${Math.floor(diff/60)} mins ago`;
+        else if (diff < 86400) timeStr = `${Math.floor(diff/3600)} hours ago`;
+        else timeStr = `${Math.floor(diff/86400)} days ago`;
+
+        return {
+          id: i,
+          title: `[${a.platform}] ${a.title}`,
+          type: a.status === "Accepted" ? "solve" : "attempt",
+          xp: a.status === "Accepted" ? "+25" : "+10",
+          time: timeStr
+        };
+      })
+    : [
+        { id: 1, title: "No recent global activity", type: "onboard", xp: "", time: "Connect accounts to see activity" }
+      ];
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-8 max-w-6xl mx-auto pb-24">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Your Progress</h1>
-          <p className="text-white/60 text-sm mt-1 capitalize">{company} · {role} · {cycle}</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Hi {user?.user_metadata?.full_name?.split(' ')[0] || 'there'} 👋</h1>
+          <p className="text-muted-foreground text-sm mt-1">Ready to conquer your next OA/interview.</p>
         </div>
-        
-        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg pr-1">
-          <CustomSelect 
-            value={topicFilter}
-            onChange={setTopicFilter}
-            icon={<Filter className="w-4 h-4" />}
-            options={[
-              { value: "All", label: "All Topics" },
-              ...Object.entries(TOPIC_STYLES).map(([k, v]) => ({ value: k, label: v.name }))
-            ]}
-          />
-        </div>
+        <button 
+          onClick={() => setShowConnectModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-sm font-medium text-foreground w-fit"
+        >
+          <Code2 className="w-4 h-4 text-muted-foreground" />
+          Connect Accounts
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <GlassPanel className="p-6 md:col-span-1 flex flex-col justify-center items-center text-center">
-          <div className="relative w-32 h-32 mb-4">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-              <path
-                className="text-white/10"
-                stroke="currentColor"
-                strokeWidth="3"
-                fill="none"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <path
-                className="text-status-success"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeDasharray={`${stats.solved_pct}, 100`}
-                fill="none"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-bold text-white">{stats.solved_pct}%</span>
-              <span className="text-[10px] uppercase tracking-wider text-white/50">Done</span>
+      {/* Four-Stat Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        {/* Local Progress */}
+        <GlassPanel className="p-6 flex flex-col justify-between min-h-[160px] relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-colors" />
+          <div className="flex items-center gap-2 text-muted-foreground font-medium text-sm mb-4">
+            <Trophy className="w-4 h-4 text-primary" /> {company ? 'Company Progress' : 'Platform Progress'}
+          </div>
+          <div className="flex items-end gap-3">
+            <span className="text-5xl font-bold text-foreground">{overallPct}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-black/20 rounded-full mt-4 overflow-hidden border border-border">
+            <div className="h-full bg-primary rounded-full transition-all duration-1000" style={{ width: `${overallPct}%` }} />
+          </div>
+        </GlassPanel>
+
+        {/* Questions Solved */}
+        <GlassPanel className="p-6 flex flex-col justify-between min-h-[160px]">
+          <div className="flex items-center gap-2 text-muted-foreground font-medium text-sm mb-4">
+            <CheckCircle className="w-4 h-4 text-status-success" /> {unifiedStats ? 'Global Solves' : 'Questions Solved'}
+          </div>
+          <div className="flex items-end gap-3">
+            <span className="text-5xl font-bold text-foreground">{solvedCount}</span>
+            {!unifiedStats && <span className="text-sm text-muted-foreground mb-1.5">/ {totalRelevant}</span>}
+          </div>
+          {unifiedStats ? (
+            <p className={cn("text-xs font-medium mt-4 w-fit px-2 py-0.5 rounded border", 
+              solvesThisWeek > 0 
+                ? "text-status-success bg-status-success/10 border-status-success/20" 
+                : "text-muted-foreground bg-white/5 border-white/10"
+            )}>
+              {solvesThisWeek > 0 ? `+${solvesThisWeek} this week` : "No activity this week"}
+            </p>
+          ) : (
+            <p className="text-xs text-status-success font-medium mt-4 bg-status-success/10 w-fit px-2 py-0.5 rounded border border-status-success/20">
+              Track progress locally
+            </p>
+          )}
+        </GlassPanel>
+
+        {/* Accuracy */}
+        <GlassPanel className="p-6 flex flex-col justify-between min-h-[160px]">
+          <div className="flex items-center gap-2 text-muted-foreground font-medium text-sm mb-4">
+            <Target className="w-4 h-4 text-secondary" /> Accuracy
+          </div>
+          <div className="flex items-end gap-3">
+            <span className="text-5xl font-bold text-foreground">{overallAcc}%</span>
+            <span className="text-sm text-muted-foreground mb-1.5">Avg</span>
+          </div>
+          <div className="flex flex-col gap-1.5 mt-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>LC: {lcAcc}%</span>
+              <span>CF: {cfAcc}%</span>
+            </div>
+            <div className="flex gap-1 h-1.5 w-full">
+              <div className="h-full bg-orange-400 rounded-l-full transition-all" style={{ width: `${lcAcc}%` }} />
+              <div className="h-full bg-blue-500 rounded-r-full transition-all" style={{ width: `${cfAcc}%` }} />
             </div>
           </div>
         </GlassPanel>
 
-        <div className="md:col-span-3 grid grid-cols-3 gap-4">
-          <GlassPanel className="p-5 flex flex-col justify-center">
-            <h3 className="text-white/50 text-sm font-medium mb-1">Solved</h3>
-            <div className="text-3xl font-bold text-status-success">{stats.solved}</div>
+        {/* Study Streak */}
+        <GlassPanel className="p-6 flex flex-col justify-between min-h-[160px]">
+          <div className="flex items-center gap-2 text-muted-foreground font-medium text-sm mb-4">
+            <Flame className="w-4 h-4 text-amber-500" /> Study Streak
+          </div>
+          <div className="flex items-end gap-3">
+            <span className="text-5xl font-bold text-foreground">{streak}</span>
+            <span className="text-sm text-muted-foreground mb-1.5">days</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">
+            Personal best: {maxStreak} days
+          </p>
+        </GlassPanel>
+
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left Column: Heatmap & Charts */}
+        <div className="lg:col-span-2 space-y-8">
+          
+          <GlassPanel className="p-6">
+            <h3 className="font-semibold text-lg text-foreground mb-6">Performance Heatmap</h3>
+            
+            {/* Heatmap Grid */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {heatmapData.map((d, i) => (
+                <div 
+                  key={i} 
+                  title={`${d.count} actions on ${d.date}`}
+                  className={cn(
+                    "w-6 h-6 rounded-md border border-border/50 transition-colors",
+                    d.count === 0 ? "bg-black/20" :
+                    d.count === 1 ? "bg-primary/20 border-primary/30" :
+                    d.count <= 3 ? "bg-primary/50 border-primary/60" :
+                    "bg-primary border-primary"
+                  )}
+                />
+              ))}
+            </div>
+
+            {/* Explicit Legend */}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span>Less</span>
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-sm bg-black/20 border border-border/50" />
+                <div className="w-3 h-3 rounded-sm bg-primary/20 border border-primary/30" />
+                <div className="w-3 h-3 rounded-sm bg-primary/50 border border-primary/60" />
+                <div className="w-3 h-3 rounded-sm bg-primary border border-primary" />
+              </div>
+              <span>More</span>
+            </div>
           </GlassPanel>
-          <GlassPanel className="p-5 flex flex-col justify-center">
-            <h3 className="text-white/50 text-sm font-medium mb-1">Attempting</h3>
-            <div className="text-3xl font-bold text-amber-400">{stats.attempted}</div>
-          </GlassPanel>
-          <GlassPanel className="p-5 flex flex-col justify-center">
-            <h3 className="text-white/50 text-sm font-medium mb-1">Not Started</h3>
-            <div className="text-3xl font-bold text-white/30">{stats.not_started}</div>
+
+        </div>
+
+        {/* Right Column: Recent Activity */}
+        <div className="lg:col-span-1">
+          <GlassPanel className="p-6 h-full flex flex-col">
+            <h3 className="font-semibold text-lg text-foreground mb-6">Recent Activity</h3>
+            
+            <div className="flex-1 space-y-5">
+              {recentActivity.map(act => (
+                <div key={act.id} className="flex items-start gap-4">
+                  <div className="shrink-0 p-2 rounded-lg bg-black/40 border border-border">
+                    {act.type === 'solve' ? <CheckCircle className="w-4 h-4 text-status-success" /> :
+                     act.type === 'attempt' ? <Code2 className="w-4 h-4 text-amber-500" /> :
+                     <Target className="w-4 h-4 text-primary" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{act.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{act.time}</p>
+                  </div>
+                  {/* Fixed width right column for XP */}
+                  <div className="shrink-0 w-16 text-right">
+                    <span className="text-xs font-bold text-secondary">{act.xp} XP</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </GlassPanel>
         </div>
       </div>
 
-      <GlassPanel className="p-0 overflow-hidden">
-        <div className="p-4 border-b border-white/10 bg-white/[0.02]">
-          <h2 className="text-base font-semibold text-white">Active & Completed Questions</h2>
+      {/* Connect Modal */}
+      {showConnectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <GlassPanel className="w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
+            <h2 className="text-xl font-bold text-foreground mb-4">Connect Accounts</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1.5">LeetCode Handle</label>
+                <input 
+                  type="text" 
+                  value={lcHandle}
+                  onChange={e => setLcHandle(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                  placeholder="e.g. neetcode"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1.5">Codeforces Handle</label>
+                <input 
+                  type="text" 
+                  value={cfHandle}
+                  onChange={e => setCfHandle(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-foreground focus:outline-none focus:border-primary transition-colors"
+                  placeholder="e.g. tourist"
+                />
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button 
+                  onClick={() => setShowConnectModal(false)}
+                  className="flex-1 py-2 rounded-lg border border-border text-muted-foreground hover:bg-white/5 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    localStorage.setItem(`prepintel_lc_${user.id}`, lcHandle);
+                    localStorage.setItem(`prepintel_cf_${user.id}`, cfHandle);
+                    setShowConnectModal(false);
+                    // trigger re-fetch by updating state slightly if needed, but dependencies will catch it
+                  }}
+                  className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+                >
+                  Save & Sync
+                </button>
+              </div>
+            </div>
+          </GlassPanel>
         </div>
-        {loading ? (
-          <div className="p-12"><ListSkeleton /></div>
-        ) : attemptedQuestions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            <Target className="w-10 h-10 text-white/20 mb-3" />
-            <p className="text-white/50 mb-5">No questions attempted yet for this selection.</p>
-            <Link 
-              href={`/questions?company=${company}&role=${role}&cycle=${cycle}`}
-              className="px-5 py-2.5 rounded-lg bg-gradient-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
-            >
-              Browse Questions <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        ) : (
-          <div className="divide-y divide-white/10">
-            {attemptedQuestions.map((q) => {
-              const pStatus = progress[q.id];
-              return (
-                <div key={q.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-white/[0.02] transition-colors">
-                  <div className="flex items-center gap-3">
-                    <button 
-                      onClick={() => setQuestionProgress(q.id, pStatus === 'solved' ? 'attempted' : 'solved')}
-                      className="p-1 text-white/40 hover:text-status-success transition-colors shrink-0"
-                    >
-                      {pStatus === 'solved' ? <CheckCircle className="w-5 h-5 text-status-success" /> : 
-                       <PlayCircle className="w-5 h-5 text-amber-400" />}
-                    </button>
-                    <a href={q.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-white/90 hover:text-white flex items-center gap-1.5 line-clamp-1">
-                      {q.title}
-                      <ExternalLink className="w-3.5 h-3.5 opacity-50" />
-                    </a>
-                  </div>
-                  
-                  <div className="flex items-center gap-3 mt-3 sm:mt-0 pl-10 sm:pl-0">
-                    <div className="flex gap-1.5">
-                      {q.tags.map((t: string) => <TagPill key={t} label={TOPIC_STYLES[t]?.name || t} />)}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </GlassPanel>
+      )}
     </div>
   );
 }

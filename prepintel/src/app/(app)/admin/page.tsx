@@ -43,7 +43,7 @@ export default function AdminPage() {
       setLoading(false);
     }
     checkAdminAndFetch();
-  }, [supabase]);
+  }, []);
 
   const handleAction = async (id: string, action: 'approved' | 'rejected') => {
     setReports(prev => prev.filter(r => r.id !== id));

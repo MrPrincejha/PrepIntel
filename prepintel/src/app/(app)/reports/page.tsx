@@ -294,20 +294,20 @@ export default function ReportsPage() {
         </GlassPanel>
       )}
 
-      <div className="space-y-4">
+      <div className="columns-1 md:columns-2 lg:columns-3 gap-6">
         {reports.map(r => (
-          <GlassPanel key={r.id} className="p-5 flex flex-col gap-2 relative group hover:bg-white/[0.03] transition-colors">
+          <GlassPanel key={r.id} className="mb-6 p-6 flex flex-col gap-3 relative group hover:bg-white/[0.03] transition-colors break-inside-avoid">
             <div className="flex items-center justify-between">
-              <span className="px-2 py-0.5 rounded text-xs font-medium bg-white/10 text-white/80">{r.round}</span>
+              <span className="px-2 py-0.5 rounded text-xs font-medium bg-white/10 text-white/80 border border-white/5">{r.round}</span>
               <span className="text-xs text-white/40">{r.date}</span>
             </div>
-            <div className="mt-2 border border-white/5 rounded-lg p-4 bg-black/20">
+            <div className="mt-1 border border-border rounded-lg p-4 bg-black/20 text-sm">
               <ReportTextFormatter text={r.text} />
             </div>
           </GlassPanel>
         ))}
         {reports.length === 0 && (
-          <div className="p-12 text-center text-white/50">No reports found. Be the first to submit!</div>
+          <div className="p-12 text-center text-white/50 col-span-full">No reports found. Be the first to submit!</div>
         )}
       </div>
     </div>

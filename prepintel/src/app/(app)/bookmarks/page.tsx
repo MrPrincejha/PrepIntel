@@ -33,7 +33,7 @@ export default function BookmarksPage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -62,7 +62,7 @@ export default function BookmarksPage() {
       setLoading(false);
     }
     fetchData();
-  }, [company, role, cycle, user, supabase]);
+  }, [company, role, cycle, user]);
 
   const filteredQuestions = useMemo(() => {
     return questions.filter(q => bookmarks.has(q.id));
@@ -112,33 +112,39 @@ export default function BookmarksPage() {
         <ListSkeleton />
       ) : (
         <GlassPanel className="p-0 overflow-hidden">
+          {/* Header Row for columns */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-black/20 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="pl-24">Question & Tags</div>
+            <div className="pr-4">Match Score</div>
+          </div>
           {filteredQuestions.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-center">
-            <Star className="w-10 h-10 text-white/20 mb-3" />
-            <p className="text-white/50 mb-5">No bookmarked questions for this selection.</p>
+            <Star className="w-10 h-10 text-muted-foreground/50 mb-3" />
+            <p className="text-muted-foreground mb-5">No bookmarked questions for this selection.</p>
             <Link 
               href={`/questions?company=${company}&role=${role}&cycle=${cycle}`}
-              className="px-5 py-2.5 rounded-lg bg-gradient-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
+              className="px-5 py-2.5 rounded-lg bg-gradient-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
             >
               Explore Questions to Bookmark <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         ) : (
-          <div className="divide-y divide-white/10">
+          <div className="divide-y divide-border">
             {filteredQuestions.map((q) => {
-              const isExpanded = expandedId === q.id;
               const pStatus = progress[q.id] || "not_started";
               
               return (
                 <div key={q.id} className="flex flex-col transition-colors hover:bg-white/[0.02]">
                   <div className="p-4 flex flex-col md:flex-row md:items-center gap-4">
+                    
+                    {/* Status & Actions */}
                     <div className="flex items-center gap-3">
-                      <button onClick={() => toggleBookmark(q.id)} className="p-1 text-amber-400 hover:text-amber-500 transition-colors">
-                        <Star className="w-5 h-5 fill-amber-400" />
+                      <button onClick={() => toggleBookmark(q.id)} className="p-1 text-muted-foreground hover:text-amber-400 transition-colors">
+                        <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
                       </button>
                       <button 
                         onClick={() => setQuestionProgress(q.id, pStatus === 'solved' ? 'not_started' : 'solved')}
-                        className="p-1 text-white/40 hover:text-status-success transition-colors"
+                        className="p-1 text-muted-foreground hover:text-status-success transition-colors"
                       >
                         {pStatus === 'solved' ? <CheckCircle className="w-5 h-5 text-status-success" /> : 
                          pStatus === 'attempted' ? <PlayCircle className="w-5 h-5 text-amber-400" /> :
@@ -146,47 +152,49 @@ export default function BookmarksPage() {
                       </button>
                     </div>
 
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    {/* Core Info */}
+                    <div className="flex-1 min-w-0 flex flex-col gap-1.5">
                       <div className="flex items-center gap-2">
-                        <a href={q.url} target="_blank" rel="noreferrer" className="text-base font-medium text-white hover:text-primary transition-colors flex items-center gap-1.5 truncate">
+                        <Link 
+                          href={`/questions/${q.id}`}
+                          className="text-base font-medium text-foreground hover:text-primary transition-colors flex items-center gap-1.5 truncate text-left"
+                        >
                           {q.title}
-                          <ExternalLink className="w-3.5 h-3.5 opacity-50" />
-                        </a>
+                        </Link>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className={cn(
-                          "text-xs font-medium",
-                          q.difficulty === "Easy" ? "text-status-success" : 
-                          q.difficulty === "Medium" ? "text-amber-400" : "text-status-error"
+                          "text-xs font-medium border border-border px-2 py-0.5 rounded-md",
+                          q.difficulty === "Easy" ? "text-status-success bg-status-success/10" : 
+                          q.difficulty === "Medium" ? "text-status-warning bg-status-warning/10" : "text-status-danger bg-status-danger/10"
                         )}>{q.difficulty}</span>
-                        <div className="flex gap-1.5">
+                        {q.company && (
+                          <span className="text-xs text-muted-foreground border border-border px-2 py-0.5 rounded-md font-medium uppercase tracking-wider bg-black/20">
+                            {q.company}
+                          </span>
+                        )}
+                        <div className="flex gap-1.5 ml-1">
                           {q.tags.map((t: string) => <TagPill key={t} label={TOPIC_STYLES[t]?.name || t} />)}
                         </div>
                       </div>
                     </div>
 
-                    <button 
-                      onClick={() => setExpandedId(isExpanded ? null : q.id)}
-                      className="flex items-center gap-4 group"
-                    >
-                      <div className={cn(
-                        "px-3 py-1.5 rounded-lg text-sm font-mono font-bold flex flex-col items-center min-w-[60px]",
-                        q.final_recommendation_score >= 90 ? "bg-primary/20 text-primary border border-primary/30" : 
-                        q.final_recommendation_score >= 70 ? "bg-white/10 text-white/90 border border-white/20" : "bg-white/5 text-white/50 border border-white/10"
-                      )}>
-                        {q.final_recommendation_score}
-                      </div>
-                      <ChevronDown className={cn("w-5 h-5 text-white/30 group-hover:text-white/60 transition-transform", isExpanded && "rotate-180")} />
-                    </button>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="px-4 pb-4 md:px-16 animate-in slide-in-from-top-2 fade-in duration-200">
-                      <div className="bg-[#05060A] border border-white/10 rounded-xl p-4">
-                        <p className="text-sm text-white/60">Explanation features are detailed in the main Questions Explorer.</p>
+                    {/* Score Badge */}
+                    <div className="flex items-center gap-4 group pr-4">
+                      <div className="group relative">
+                        <div className={cn(
+                          "px-3 py-1 rounded-md text-sm font-mono font-medium cursor-help",
+                          q.final_recommendation_score >= 90 ? "bg-primary/20 text-primary" : 
+                          q.final_recommendation_score >= 70 ? "bg-white/10 text-white/80" : "bg-white/5 text-muted-foreground"
+                        )}>
+                          {q.final_recommendation_score}
+                        </div>
+                        <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-black/90 border border-white/10 rounded text-[10px] text-white/70 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 whitespace-normal">
+                          Relevance Score: Frequency of this pattern in verified reports, weighted by recency.
+                        </div>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
