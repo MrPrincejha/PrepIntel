@@ -226,7 +226,7 @@ export default function ProgressPage() {
             
             {/* Heatmap Grid */}
             <div className="flex flex-wrap gap-2 mb-6">
-              {heatmapData.map((d, i) => (
+              {heatmapData.map((d: any, i: number) => (
                 <div 
                   key={i} 
                   title={`${d.count} actions on ${d.date}`}
@@ -262,7 +262,7 @@ export default function ProgressPage() {
             <h3 className="font-semibold text-lg text-foreground mb-6">Recent Activity</h3>
             
             <div className="flex-1 space-y-5">
-              {recentActivity.map(act => (
+              {recentActivity.map((act: any) => (
                 <div key={act.id} className="flex items-start gap-4">
                   <div className="shrink-0 p-2 rounded-lg bg-black/40 border border-border">
                     {act.type === 'solve' ? <CheckCircle className="w-4 h-4 text-status-success" /> :

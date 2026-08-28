@@ -142,7 +142,7 @@ export default function DashboardOverview() {
         <GlassPanel className="p-12 text-center max-w-md">
           <Hash className="w-12 h-12 text-white/20 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Not enough data yet</h2>
-          <p className="text-sm text-white/50">We don't have enough verified reports for {company.toUpperCase()} - {role.toUpperCase()} in {cycle}. Try selecting a different combination.</p>
+          <p className="text-sm text-white/50">We don't have enough verified reports for {company?.toUpperCase()} - {role?.toUpperCase()} in {cycle}. Try selecting a different combination.</p>
         </GlassPanel>
       </div>
     );
