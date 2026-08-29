@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { DisplayAd } from "@/components/core/DisplayAd";
 import { TOPIC_STYLES, TOPIC_CATEGORIES } from "@/lib/topics";
 import { createClient } from "@/lib/supabase/client";
 
@@ -366,6 +367,9 @@ export default function DashboardOverview() {
           </div>
         </GlassPanel>
       </div>
+      
+      {/* Manual Display Ad */}
+      <DisplayAd />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ChevronDown, ExternalLink, Star, CheckCircle, Circle, PlayCircle, Filter, Sparkles, Info } from "lucide-react";
 import { cn, cleanReportText } from "@/lib/utils";
 import { ReportTextFormatter } from "@/components/core/ReportTextFormatter";
+import { DisplayAd } from "@/components/core/DisplayAd";
 import { useCachedApi } from "@/lib/useCachedApi";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
@@ -234,9 +235,16 @@ export default function QuestionsPage() {
             <Star className={cn("w-4 h-4", onlyBookmarked && "fill-primary")} /> Bookmarked
           </button>
         </div>
-      </div>
 
-      {loading ? (
+        </div>
+
+
+        {/* Manual Display Ad */}
+
+        <DisplayAd />
+
+
+        {loading ? (
         <ListSkeleton />
       ) : (
         <GlassPanel className="p-0 overflow-hidden">
@@ -326,3 +334,4 @@ export default function QuestionsPage() {
     </div>
   );
 }
+
