@@ -8,6 +8,7 @@ import { ListSkeleton } from "@/components/core/Skeletons";
 import { createClient } from "@/lib/supabase/client";
 import { ChevronDown, ExternalLink, Star, CheckCircle, Circle, PlayCircle, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DisplayAd } from "@/components/core/DisplayAd";
 import Link from "next/link";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
@@ -202,6 +203,10 @@ export default function BookmarksPage() {
         )}
       </GlassPanel>
       )}
+
+      {/* Manual Display Ad */}
+      <DisplayAd />
     </div>
   );
 }
+

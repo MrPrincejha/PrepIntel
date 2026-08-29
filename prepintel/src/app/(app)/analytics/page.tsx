@@ -6,6 +6,7 @@ import { GradientButton } from "@/components/core/GradientButton";
 import { Target, ChevronDown, ChevronUp, AlertCircle, ArrowRight } from "lucide-react";
 import * as Icons from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DisplayAd } from "@/components/core/DisplayAd";
 import { TOPIC_CATEGORIES } from "@/lib/topics";
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 
@@ -318,7 +319,11 @@ export default function AnalyticsPage() {
           </div>
 
         </div>
+        
+        {/* Manual Display Ad */}
+        <DisplayAd />
       )}
     </div>
   );
 }
+
