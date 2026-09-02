@@ -8,23 +8,48 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState(false);
   const supabase = createClient();
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ 
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`
-      }
-    });
-    if (error) {
-      setMessage(error.message);
+    setMessage("");
+    setError(false);
+
+    let authError = null;
+
+    if (mode === "login") {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      authError = signInError;
     } else {
-      setMessage("Check your email for the login link!");
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      authError = signUpError;
+    }
+
+    if (authError) {
+      setMessage(authError.message);
+      setError(true);
+    } else {
+      if (mode === "signup") {
+        setMessage("Success! Check your email to confirm your account.");
+      } else {
+        setMessage("Logged in successfully. Redirecting...");
+        window.location.href = "/dashboard";
+      }
     }
     setLoading(false);
   };
@@ -45,12 +70,19 @@ export default function LoginPage() {
       <GlassPanel className="w-full max-w-md p-8 relative z-10">
         <div className="flex flex-col items-center mb-8">
           <Logo size="lg" className="mb-6" />
-          <h1 className="text-2xl font-bold text-white mb-2">Welcome Back</h1>
-          <p className="text-sm text-white/50 text-center">Sign in to access your personalized placement intelligence.</p>
+          <h1 className="text-2xl font-bold text-white mb-2">
+            {mode === "login" ? "Welcome Back" : "Create an Account"}
+          </h1>
+          <p className="text-sm text-white/50 text-center">
+            {mode === "login" 
+              ? "Sign in to access your personalized placement intelligence."
+              : "Sign up to track verified OA trends and get a roadmap."}
+          </p>
         </div>
 
         <button
           onClick={handleGoogleLogin}
+          type="button"
           className="w-full flex items-center justify-center gap-3 bg-white text-black font-semibold rounded-full py-3 hover:bg-white/90 transition-colors mb-6"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -68,7 +100,7 @@ export default function LoginPage() {
           <div className="flex-1 h-px bg-white/10" />
         </div>
 
-        <form onSubmit={handleEmailLogin} className="space-y-4">
+        <form onSubmit={handleAuth} className="space-y-4">
           <div>
             <input
               type="email"
@@ -79,13 +111,43 @@ export default function LoginPage() {
               className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-white/30"
             />
           </div>
+          <div>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password (min 8 characters)"
+              className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-white/30"
+            />
+          </div>
           <GradientButton type="submit" className="w-full" disabled={loading}>
-            {loading ? "Sending link..." : "Send Magic Link"}
+            {loading ? "Processing..." : mode === "login" ? "Sign In" : "Sign Up"}
           </GradientButton>
         </form>
 
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setMode(mode === "login" ? "signup" : "login");
+              setMessage("");
+              setError(false);
+            }}
+            className="text-sm text-primary hover:text-primary/80 transition-colors"
+          >
+            {mode === "login" 
+              ? "Don't have an account? Sign up" 
+              : "Already have an account? Sign in"}
+          </button>
+        </div>
+
         {message && (
-          <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10 text-sm text-center text-white/80">
+          <div className={`mt-4 p-3 rounded-lg border text-sm text-center ${
+            error 
+              ? "bg-red-500/10 border-red-500/20 text-red-400" 
+              : "bg-status-success/10 border-status-success/20 text-status-success"
+          }`}>
             {message}
           </div>
         )}
