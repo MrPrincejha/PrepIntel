@@ -319,10 +319,11 @@ export default function AnalyticsPage() {
           </div>
 
         </div>
+        <div className="mt-8">
+          <DisplayAd />
+        </div>
       )}
-
-      {/* Manual Display Ad */}
-      <DisplayAd />
     </div>
   );
 }
+

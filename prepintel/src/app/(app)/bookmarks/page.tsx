@@ -130,7 +130,10 @@ export default function BookmarksPage() {
             </Link>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="p-4 border-b border-border bg-black/10">
+              <DisplayAd />
+            </div>
+            <div className="divide-y divide-border">
             {filteredQuestions.map((q) => {
               const pStatus = progress[q.id] || "not_started";
               
@@ -203,10 +206,8 @@ export default function BookmarksPage() {
         )}
       </GlassPanel>
       )}
-
-      {/* Manual Display Ad */}
-      <DisplayAd />
     </div>
   );
 }
+
 

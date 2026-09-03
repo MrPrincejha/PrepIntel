@@ -237,13 +237,6 @@ export default function QuestionsPage() {
         </div>
 
         </div>
-
-
-        {/* Manual Display Ad */}
-
-        <DisplayAd />
-
-
         {loading ? (
         <ListSkeleton />
       ) : (
@@ -256,7 +249,10 @@ export default function QuestionsPage() {
           {filteredQuestions.length === 0 ? (
             <div className="p-12 text-center text-muted-foreground">No questions found matching criteria.</div>
           ) : (
-            <div className="divide-y divide-border">
+            <div className="p-4 border-b border-border bg-black/10">
+                <DisplayAd />
+              </div>
+              <div className="divide-y divide-border">
               {filteredQuestions.map((q) => {
                 const isBookmarked = bookmarks.has(q.id);
                 const pStatus = progress[q.id] || "not_started";
@@ -334,4 +330,6 @@ export default function QuestionsPage() {
     </div>
   );
 }
+
+
 
