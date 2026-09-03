@@ -249,7 +249,8 @@ export default function QuestionsPage() {
           {filteredQuestions.length === 0 ? (
             <div className="p-12 text-center text-muted-foreground">No questions found matching criteria.</div>
           ) : (
-            <div className="p-4 border-b border-border bg-black/10">
+              <>
+              <div className="p-4 border-b border-border bg-black/10">
                 <DisplayAd />
               </div>
               <div className="divide-y divide-border">
@@ -322,14 +323,16 @@ export default function QuestionsPage() {
                     </div>
                   </div>
                 );
-              })}
-            </div>
-        )}
-      </GlassPanel>
+                })}
+              </div>
+              </>
+            )}
+          </GlassPanel>
       )}
     </div>
   );
 }
+
 
 
 

@@ -130,7 +130,8 @@ export default function BookmarksPage() {
             </Link>
           </div>
         ) : (
-          <div className="p-4 border-b border-border bg-black/10">
+            <>
+            <div className="p-4 border-b border-border bg-black/10">
               <DisplayAd />
             </div>
             <div className="divide-y divide-border">
@@ -201,13 +202,15 @@ export default function BookmarksPage() {
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
-      </GlassPanel>
+                })}
+              </div>
+            </>
+          )}
+        </GlassPanel>
       )}
     </div>
   );
 }
+
 
 
