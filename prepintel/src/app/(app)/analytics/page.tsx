@@ -238,6 +238,7 @@ export default function AnalyticsPage() {
           </div>
         </GlassPanel>
       ) : (
+        <>
         <div className="flex flex-col gap-8 relative z-10">
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -322,9 +323,11 @@ export default function AnalyticsPage() {
         <div className="mt-8">
           <DisplayAd />
         </div>
+        </>
       )}
     </div>
   );
 }
+
 
 
