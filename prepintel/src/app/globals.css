@@ -96,9 +96,10 @@
 /* Custom utilities */
 @layer utilities {
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-[--color-secondary] to-[--color-primary];
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-secondary to-primary;
   }
   .bg-gradient-primary {
-    @apply bg-gradient-to-r from-[--color-primary] to-purple-500;
+    @apply bg-gradient-to-r from-primary to-purple-500;
   }
 }
+
