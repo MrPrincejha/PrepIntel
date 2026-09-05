@@ -50,7 +50,7 @@ export default async function CompanyRoleQuestionsPage({ params }: any) {
     '@type': 'FAQPage',
     mainEntity: questions.slice(0, 10).map((q: any) => ({
       '@type': 'Question',
-      name: q.canonical_title,
+      name: q.title,
       acceptedAnswer: {
         '@type': 'Answer',
         text: q.description || 'View the full problem description and personalized prep insights on PrepIntel.'
@@ -101,7 +101,7 @@ export default async function CompanyRoleQuestionsPage({ params }: any) {
         {questions.map((q: any) => (
            <div key={q.id} className="p-5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/[0.07] transition-colors">
              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
-               <h2 className="text-white font-medium text-lg">{q.canonical_title}</h2>
+               <h2 className="text-white font-medium text-lg">{q.title}</h2>
                <DifficultyBadge level={q.difficulty} />
              </div>
              
@@ -121,5 +121,6 @@ export default async function CompanyRoleQuestionsPage({ params }: any) {
     </main>
   )
 }
+
 
 

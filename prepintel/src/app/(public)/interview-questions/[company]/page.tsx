@@ -44,49 +44,49 @@ export default async function CompanyQuestionsPage({ params }: any) {
     questions = [
       {
         id: "mock-1",
-        canonical_title: `Two Sum - ${company} Array Problem`,
+        title: `Two Sum - ${company} Array Problem`,
         difficulty: 1,
         tags: ["Arrays", "Hash Tables", "Algorithm"]
       },
       {
         id: "mock-2",
-        canonical_title: `Design a Distributed Message Queue like SQS`,
+        title: `Design a Distributed Message Queue like SQS`,
         difficulty: 3,
         tags: ["System Design", "Distributed Systems", "Message Queues"]
       },
       {
         id: "mock-3",
-        canonical_title: `Find the longest palindromic substring in a string`,
+        title: `Find the longest palindromic substring in a string`,
         difficulty: 2,
         tags: ["Dynamic Programming", "Strings"]
       },
       {
         id: "mock-4",
-        canonical_title: `Implement an LRU Cache with O(1) operations`,
+        title: `Implement an LRU Cache with O(1) operations`,
         difficulty: 2,
         tags: ["Data Structures", "Linked Lists", "Hash Maps"]
       },
       {
         id: "mock-5",
-        canonical_title: `Behavioral: Tell me about a time you had a conflict with a teammate`,
+        title: `Behavioral: Tell me about a time you had a conflict with a teammate`,
         difficulty: 1,
         tags: ["Behavioral", "Leadership", "Conflict Resolution"]
       },
       {
         id: "mock-6",
-        canonical_title: `Serialize and Deserialize a Binary Tree`,
+        title: `Serialize and Deserialize a Binary Tree`,
         difficulty: 3,
         tags: ["Trees", "Serialization", "DFS"]
       },
       {
         id: "mock-7",
-        canonical_title: `Merge K Sorted Lists`,
+        title: `Merge K Sorted Lists`,
         difficulty: 3,
         tags: ["Heaps", "Linked Lists", "Divide and Conquer"]
       },
       {
         id: "mock-8",
-        canonical_title: `Word Search II - Find all words in a 2D board`,
+        title: `Word Search II - Find all words in a 2D board`,
         difficulty: 3,
         tags: ["Trie", "Backtracking", "Matrix"]
       }
@@ -100,7 +100,7 @@ export default async function CompanyQuestionsPage({ params }: any) {
     '@type': 'FAQPage',
     mainEntity: questions.slice(0, 10).map((q: any) => ({
       '@type': 'Question',
-      name: q.canonical_title,
+      name: q.title,
       acceptedAnswer: {
         '@type': 'Answer',
         text: q.description || 'View the full problem description and personalized prep insights on PrepIntel.'
@@ -132,7 +132,7 @@ export default async function CompanyQuestionsPage({ params }: any) {
         {questions.map((q: any) => (
            <div key={q.id} className="p-5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/[0.07] transition-colors">
              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
-               <h2 className="text-white font-medium text-lg">{q.canonical_title}</h2>
+               <h2 className="text-white font-medium text-lg">{q.title}</h2>
                <DifficultyBadge level={q.difficulty} />
              </div>
              
@@ -152,5 +152,6 @@ export default async function CompanyQuestionsPage({ params }: any) {
     </main>
   )
 }
+
 
 
