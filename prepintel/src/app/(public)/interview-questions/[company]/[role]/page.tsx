@@ -12,8 +12,8 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
   const roleName = role.toUpperCase()
   
   return {
-    title: `${companyName} ${roleName} Interview Questions (2025)`,
-    description: `Real ${companyName} ${roleName} online assessment and interview questions. See difficulty distribution, common topics, and get a personalized prep plan.`,
+    title: `${company} ${roleName} Interview Questions (2025)`,
+    description: `Real ${company} ${roleName} online assessment and interview questions. See difficulty distribution, common topics, and get a personalized prep plan.`,
   }
 }
 
@@ -121,4 +121,5 @@ export default async function CompanyRoleQuestionsPage({ params }: any) {
     </main>
   )
 }
+
 

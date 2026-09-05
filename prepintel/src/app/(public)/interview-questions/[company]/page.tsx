@@ -11,8 +11,8 @@ export async function generateMetadata({ params }: any): Promise<Metadata> {
   const companyName = company.charAt(0).toUpperCase() + company.slice(1)
   
   return {
-    title: `${companyName} Interview Questions (2025)`,
-    description: `Real ${companyName} online assessment and interview questions. See difficulty distribution, common topics, and get a personalized prep plan.`,
+    title: `${company} Interview Questions (2025)`,
+    description: `Real ${company} online assessment and interview questions. See difficulty distribution, common topics, and get a personalized prep plan.`,
   }
 }
 
@@ -44,7 +44,7 @@ export default async function CompanyQuestionsPage({ params }: any) {
     questions = [
       {
         id: "mock-1",
-        canonical_title: `Two Sum - ${companyName} Array Problem`,
+        canonical_title: `Two Sum - ${company} Array Problem`,
         difficulty: 1,
         tags: ["Arrays", "Hash Tables", "Algorithm"]
       },
@@ -152,4 +152,5 @@ export default async function CompanyQuestionsPage({ params }: any) {
     </main>
   )
 }
+
 
