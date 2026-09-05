@@ -13,7 +13,9 @@ export function PublicFooter() {
         </div>
         
         <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-sm font-medium text-white/60">
-          <Link href="/about" className="hover:text-white transition-colors">About Us</Link>
+                    <Link href="/about" className="hover:text-white transition-colors">About Us</Link>
+          <Link href="/interview-questions/google" className="hover:text-white transition-colors">Google Questions</Link>
+          <Link href="/interview-questions/amazon" className="hover:text-white transition-colors">Amazon Questions</Link>
           <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
           <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
         </div>
@@ -24,3 +26,4 @@ export function PublicFooter() {
     </footer>
   );
 }
+

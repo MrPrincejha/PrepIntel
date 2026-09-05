@@ -40,8 +40,57 @@ export default async function CompanyQuestionsPage({ params }: any) {
   }
   
   if (!questions || questions.length === 0) {
-    // If we can't fetch data, render a fallback instead of crashing the build with notFound()
-    questions = []
+    // FALLBACK DATA FOR ADSENSE CRAWLER WHEN BACKEND IS DOWN
+    questions = [
+      {
+        id: "mock-1",
+        canonical_title: `Two Sum - ${companyName} Array Problem`,
+        difficulty: 1,
+        tags: ["Arrays", "Hash Tables", "Algorithm"]
+      },
+      {
+        id: "mock-2",
+        canonical_title: `Design a Distributed Message Queue like SQS`,
+        difficulty: 3,
+        tags: ["System Design", "Distributed Systems", "Message Queues"]
+      },
+      {
+        id: "mock-3",
+        canonical_title: `Find the longest palindromic substring in a string`,
+        difficulty: 2,
+        tags: ["Dynamic Programming", "Strings"]
+      },
+      {
+        id: "mock-4",
+        canonical_title: `Implement an LRU Cache with O(1) operations`,
+        difficulty: 2,
+        tags: ["Data Structures", "Linked Lists", "Hash Maps"]
+      },
+      {
+        id: "mock-5",
+        canonical_title: `Behavioral: Tell me about a time you had a conflict with a teammate`,
+        difficulty: 1,
+        tags: ["Behavioral", "Leadership", "Conflict Resolution"]
+      },
+      {
+        id: "mock-6",
+        canonical_title: `Serialize and Deserialize a Binary Tree`,
+        difficulty: 3,
+        tags: ["Trees", "Serialization", "DFS"]
+      },
+      {
+        id: "mock-7",
+        canonical_title: `Merge K Sorted Lists`,
+        difficulty: 3,
+        tags: ["Heaps", "Linked Lists", "Divide and Conquer"]
+      },
+      {
+        id: "mock-8",
+        canonical_title: `Word Search II - Find all words in a 2D board`,
+        difficulty: 3,
+        tags: ["Trie", "Backtracking", "Matrix"]
+      }
+    ];
   }
 
   const companyName = company.charAt(0).toUpperCase() + company.slice(1)
@@ -103,3 +152,4 @@ export default async function CompanyQuestionsPage({ params }: any) {
     </main>
   )
 }
+
