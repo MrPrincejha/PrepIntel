@@ -1,6 +1,5 @@
 import { NavSidebar } from "@/components/core/NavSidebar";
 import { TopBar } from "@/components/core/TopBar";
-import { AuthGuard } from "@/components/core/AuthGuard";
 
 // Force all pages in the (app) group to be rendered dynamically at request time.
 // This is required because they all use useSearchParams() which cannot be statically pre-rendered.
@@ -8,8 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen bg-background text-foreground">
+          <div className="flex min-h-screen bg-background text-foreground">
         <NavSidebar />
         <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
           <TopBar />
@@ -18,6 +16,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </main>
         </div>
       </div>
-    </AuthGuard>
-  );
+      );
 }
+
