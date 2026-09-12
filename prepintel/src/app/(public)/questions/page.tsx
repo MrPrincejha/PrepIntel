@@ -19,7 +19,7 @@ const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + 
 
 import { TOPIC_STYLES, TOPICS } from "@/lib/topics";
 
-export default function QuestionsPage() {
+function QuestionsPageContent() {
   const searchParams = useSearchParams();
   const company = searchParams.get("company") || "";
   const role = searchParams.get("role") || "";
@@ -349,3 +349,13 @@ export default function QuestionsPage() {
 
 
 
+
+import { Suspense } from 'react';
+
+export default function QuestionsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-white/50">Loading questions...</div>}>
+      <QuestionsPageContent />
+    </Suspense>
+  );
+}

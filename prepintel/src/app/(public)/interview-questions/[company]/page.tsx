@@ -45,49 +45,49 @@ export default async function CompanyQuestionsPage({ params }: any) {
       {
         id: "mock-1",
         title: `Two Sum - ${company} Array Problem`,
-        difficulty: 1,
+        difficulty: "Easy",
         tags: ["Arrays", "Hash Tables", "Algorithm"]
       },
       {
         id: "mock-2",
         title: `Design a Distributed Message Queue like SQS`,
-        difficulty: 3,
+        difficulty: "Hard",
         tags: ["System Design", "Distributed Systems", "Message Queues"]
       },
       {
         id: "mock-3",
         title: `Find the longest palindromic substring in a string`,
-        difficulty: 2,
+        difficulty: "Medium",
         tags: ["Dynamic Programming", "Strings"]
       },
       {
         id: "mock-4",
         title: `Implement an LRU Cache with O(1) operations`,
-        difficulty: 2,
+        difficulty: "Medium",
         tags: ["Data Structures", "Linked Lists", "Hash Maps"]
       },
       {
         id: "mock-5",
         title: `Behavioral: Tell me about a time you had a conflict with a teammate`,
-        difficulty: 1,
+        difficulty: "Easy",
         tags: ["Behavioral", "Leadership", "Conflict Resolution"]
       },
       {
         id: "mock-6",
         title: `Serialize and Deserialize a Binary Tree`,
-        difficulty: 3,
+        difficulty: "Hard",
         tags: ["Trees", "Serialization", "DFS"]
       },
       {
         id: "mock-7",
         title: `Merge K Sorted Lists`,
-        difficulty: 3,
+        difficulty: "Hard",
         tags: ["Heaps", "Linked Lists", "Divide and Conquer"]
       },
       {
         id: "mock-8",
         title: `Word Search II - Find all words in a 2D board`,
-        difficulty: 3,
+        difficulty: "Hard",
         tags: ["Trie", "Backtracking", "Matrix"]
       }
     ];

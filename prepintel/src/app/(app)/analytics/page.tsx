@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/client";
 "use client";
+import { createClient } from "@/lib/supabase/client";
 
 import { useState, useEffect } from "react";
 import { GlassPanel } from "@/components/core/GlassPanel";
