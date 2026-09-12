@@ -11,7 +11,7 @@ import { DifficultyBadge } from "@/components/core/DifficultyBadge";
 import { cn } from "@/lib/utils";
 import { Map, Clock, ArrowRight, ExternalLink, CheckCircle } from "lucide-react";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1";
 
 import { TOPIC_STYLES, TOPICS } from "@/lib/topics";
 

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { DisplayAd } from "@/components/core/DisplayAd";
 import Link from "next/link";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1";
 
 import { TOPIC_STYLES, TOPICS } from "@/lib/topics";
 

@@ -1,41 +1,87 @@
+﻿import hashlib
 import re
-from typing import List, Dict
+from typing import List, Dict, Optional
+from datetime import datetime, timezone
 
-# Mock topic structure for extraction
-MOCK_TOPICS = {
-    '1d-dp': ['dp', 'dynamic programming', 'memoization', '1d dp'],
-    'arrays': ['array', 'arrays', 'list', 'vector'],
-    'greedy': ['greedy', 'optimization', 'interval'],
-    'graphs': ['graph', 'bfs', 'dfs', 'shortest path']
-}
+# Example robust ingestion pipeline per Phase 4 specifications
 
-def extract_topics_from_text(raw_text: str, topics_dict: Dict[str, List[str]] = None) -> List[str]:
+def compute_content_hash(text: str) -> str:
+    """Normalize text and compute a deterministic hash to prevent duplicates."""
+    if not text:
+        return ""
+    # Normalize: lower case, strip extra whitespace and punctuation
+    normalized = re.sub(r'\s+', ' ', text.lower()).strip()
+    normalized = re.sub(r'[^\w\s]', '', normalized)
+    return hashlib.sha256(normalized.encode('utf-8')).hexdigest()
+
+def extract_topics_layered(raw_text: str, topics_db: List[Dict]) -> List[Dict]:
     """
-    Keyword/regex matching against topics.slug + synonyms table.
+    Layered classifier for topics:
+    1. Exact taxonomy match (high confidence)
+    2. Semantic / LLM fallback (simulated here as placeholder)
     """
-    if topics_dict is None:
-        topics_dict = MOCK_TOPICS
-        
     found_topics = []
     text_lower = raw_text.lower()
     
-    for topic_slug, synonyms in topics_dict.items():
+    for topic in topics_db:
+        topic_id = topic['id']
+        slug = topic['slug']
+        synonyms = topic.get('synonyms', [slug])
+        
+        # Layer 1: Taxonomy regex match
+        matched = False
         for synonym in synonyms:
-            # Simple word boundary regex match
             pattern = r'\b' + re.escape(synonym) + r'\b'
             if re.search(pattern, text_lower):
-                found_topics.append(topic_slug)
-                break # move to next topic if found
+                found_topics.append({
+                    "topic_id": topic_id,
+                    "confidence": 0.9,
+                    "extraction_method": "taxonomy_regex"
+                })
+                matched = True
+                break
                 
+        # Layer 2: LLM / Semantic fallback could go here if not matched
+        if not matched:
+            pass
+            
     return found_topics
 
-def run_ingestion(reports: List[Dict]) -> List[Dict]:
+def process_raw_report(report: Dict, topics_db: List[Dict]) -> Dict:
     """
-    Ingest new raw_reports -> run topic extraction -> write report_topic_observations
+    Processes a single raw report idempotently.
+    Updates status and returns observations to be inserted.
     """
+    try:
+        raw_text = report.get('raw_text', '')
+        content_hash = compute_content_hash(raw_text)
+        
+        # Extraction
+        observations = extract_topics_layered(raw_text, topics_db)
+        
+        return {
+            "success": True,
+            "report_id": report['id'],
+            "content_hash": content_hash,
+            "observations": observations,
+            "status": "classified",
+            "processing_error": None
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "report_id": report['id'],
+            "status": "failed",
+            "processing_error": str(e)
+        }
+
+def run_ingestion_batch(reports: List[Dict], topics_db: List[Dict]) -> List[Dict]:
+    """
+    Batch processor for ingestion pipeline.
+    """
+    results = []
     for report in reports:
-        if report.get('status') == 'pending':
-            extracted = extract_topics_from_text(report['raw_text'])
-            report['extracted_topics'] = extracted
-            report['status'] = 'processed'
-    return reports
+        if report.get('status') in ['pending', 'failed']:
+            res = process_raw_report(report, topics_db)
+            results.append(res)
+    return results

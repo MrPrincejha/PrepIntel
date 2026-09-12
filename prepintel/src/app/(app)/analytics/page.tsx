@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/client";
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,6 +13,8 @@ import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadius
 
 export default function AnalyticsPage() {
   const [profile, setProfile] = useState<Record<string, string>>({});
+  const [user, setUser] = useState<any>(null);
+  const supabase = createClient();
   const [saved, setSaved] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [isEditMode, setIsEditMode] = useState(false);
@@ -29,8 +32,20 @@ export default function AnalyticsPage() {
     }
   }, []);
 
-  const handleSave = () => {
-    localStorage.setItem("prepintel_skill_profile", JSON.stringify(profile));
+  const handleSave = async () => {
+    if (!user) return alert("Please sign in to save your profile.");
+    
+    // Upsert all profile entries to Supabase
+    const upserts = Object.entries(profile).map(([topic_id, skill_level]) => ({
+      user_id: user.id,
+      topic_id,
+      skill_level
+    }));
+    
+    if (upserts.length > 0) {
+      await supabase.from('user_skill_profile').upsert(upserts, { onConflict: 'user_id,topic_id' });
+    }
+    
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     setIsEditMode(false);

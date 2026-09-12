@@ -83,7 +83,7 @@ def analyze_topics_from_text(reports: List[Dict]) -> Dict[str, float]:
     # Normalize to probabilities
     return {k: v / total_matches for k, v in scores.items()}
 
-@app.get("/api/topics")
+@app.get("/api/v1/topics")
 def get_topics(company: str, role: str, cycle: str):
     reports = fetch_raw_reports(company, role)
     if not reports:
@@ -98,19 +98,15 @@ def get_topics(company: str, role: str, cycle: str):
     # Sort and return top 5
     sorted_topics = sorted(topic_probs.items(), key=lambda x: x[1], reverse=True)[:5]
     
-    # Generate a deterministic trend score based on company name hash
-    seed = sum(ord(c) for c in company)
-    random.seed(seed)
-    
+    # No more fake data. Trend score will be explicitly 0.0 or omitted if insufficient evidence exists.
     result = []
     for t, p in sorted_topics:
         if p > 0:
-            trend = random.uniform(-0.15, 0.25)
-            result.append({"topic": t, "weighted_probability": p, "trend_score": round(trend, 2)})
+            result.append({"topic": t, "weighted_probability": p, "trend_score": 0.0})
             
     return result
 
-@app.get("/api/difficulty")
+@app.get("/api/v1/difficulty")
 def get_difficulty(company: str, role: str, cycle: str, round_type: str = Query("oa", alias="round")):
     reports = fetch_raw_reports(company, role)
     if not reports:
@@ -149,37 +145,22 @@ def get_difficulty(company: str, role: str, cycle: str, round_type: str = Query(
         "hard_pct": int(hard_c / total * 100)
     }
 
-@app.get("/api/trend")
+@app.get("/api/v1/trend")
 def get_trend(company: str, role: str, topic: str, months: int = 12):
-    # Deterministic dynamic trend based on company
-    seed = sum(ord(c) for c in company)
-    random.seed(seed)
-    
     reports = fetch_raw_reports(company, role)
     if not reports:
-        top_topics = ["two-pointers", "hashing", "dfs-bfs"]
-    else:
-        topic_probs = analyze_topics_from_text(reports)
-        top_topics = [t[0] for t in sorted(topic_probs.items(), key=lambda x: x[1], reverse=True)[:3]]
+        return {"monthly_data": [], "error": "Insufficient evidence"}
         
-    months_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    data = []
+    topic_probs = analyze_topics_from_text(reports)
+    top_topics = [t[0] for t in sorted(topic_probs.items(), key=lambda x: x[1], reverse=True)[:3]]
     
-    current_probs = {t: random.uniform(0.1, 0.5) for t in top_topics}
-    
-    for i in range(12):
-        month_data = {"month": months_labels[i]}
-        for t in top_topics:
-            month_data[t] = round(current_probs[t], 2)
-            current_probs[t] += random.uniform(-0.05, 0.08)
-            current_probs[t] = max(0.05, min(0.95, current_probs[t]))
-        data.append(month_data)
-        
-    return {"monthly_data": data}
+    # Real trend would aggregate reports by month. For Phase 3, we simply return insufficient evidence
+    # instead of generating fake random charts. We will build the true aggregation in Phase 5.
+    return {"monthly_data": [], "message": "Pending true timeline aggregation (Phase 5)"}
 
 QUESTIONS_CACHE = {}
 
-@app.get("/api/questions")
+@app.get("/api/v1/questions")
 def get_questions(company: str = "", role: str = "", cycle: str = "", limit: int = 50):
     cache_key = f"{company}_{role}_{cycle}_{limit}"
     now = time.time()
@@ -322,7 +303,7 @@ def get_questions(company: str = "", role: str = "", cycle: str = "", limit: int
     QUESTIONS_CACHE[cache_key] = {'time': time.time(), 'data': result}
     return result
 
-@app.post("/api/prep-plan")
+@app.post("/api/v1/prep-plan")
 def generate_prep_plan(req: PrepPlanRequest):
     all_q = get_questions(req.company, req.role, req.cycle, limit=100)
     if req.skill_profile:
@@ -340,7 +321,7 @@ def generate_prep_plan(req: PrepPlanRequest):
     buckets = generate_weekly_buckets(diverse_selection, minutes_per_week=300)
     return {"plan": buckets}
 
-@app.post("/api/ingest/screenshot")
+@app.post("/api/v1/ingest/screenshot")
 async def ingest_screenshot(
     files: List[UploadFile] = File(...),
     company: str = Form(...),
@@ -375,7 +356,7 @@ class TextIngestRequest(BaseModel):
     url: Optional[str] = None
     user_id: Optional[str] = None
 
-@app.post("/api/ingest/text")
+@app.post("/api/v1/ingest/text")
 def ingest_text(req: TextIngestRequest):
     try:
         refined_text = refine_problem_description(req.text)
@@ -411,7 +392,7 @@ import requests
 from datetime import datetime, timezone
 import datetime as dt_lib
 
-@app.get("/api/progress/unified")
+@app.get("/api/v1/progress/unified")
 def get_unified_progress(lc_handle: str = "", cf_handle: str = ""):
     cache_key = f"{lc_handle}_{cf_handle}"
     now = time.time()

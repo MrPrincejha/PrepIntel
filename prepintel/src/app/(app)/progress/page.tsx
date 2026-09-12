@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { TOPIC_STYLES } from "@/lib/topics";
 import { useCachedApi } from "@/lib/useCachedApi";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1";
 
 export default function ProgressPage() {
   const searchParams = useSearchParams();

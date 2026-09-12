@@ -15,7 +15,7 @@ import { ReportTextFormatter } from "@/components/core/ReportTextFormatter";
 import { DisplayAd } from "@/components/core/DisplayAd";
 import { useCachedApi } from "@/lib/useCachedApi";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1";
 
 import { TOPIC_STYLES, TOPICS } from "@/lib/topics";
 
@@ -44,10 +44,17 @@ export default function QuestionsPage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
-    const storedSkills = localStorage.getItem("prepintel_skill_profile");
-    if (storedSkills) {
-      try { setSkillProfile(JSON.parse(storedSkills)); } catch (e) {}
-    }
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const u = session?.user ?? null;
+      if (u) {
+        const { data: sData } = await supabase.from('user_skill_profile').select('topic_id, skill_level').eq('user_id', u.id);
+        if (sData) {
+          const sMap: Record<string, string> = {};
+          sData.forEach(s => sMap[s.topic_id] = s.skill_level);
+          setSkillProfile(sMap);
+        }
+      }
+    });
   }, []);
 
   const params = new URLSearchParams();
@@ -64,14 +71,18 @@ export default function QuestionsPage() {
 
   useEffect(() => {
     if (!user) return;
-    const storedBookmarks = localStorage.getItem(`prepintel_bookmarks_${user.id}`);
-    if (storedBookmarks) {
-      try { setBookmarks(new Set(JSON.parse(storedBookmarks))); } catch (e) {}
+    async function loadUserData() {
+      const { data: bData } = await supabase.from('bookmarks').select('question_id').eq('user_id', user.id);
+      if (bData) setBookmarks(new Set(bData.map(b => b.question_id)));
+      
+      const { data: pData } = await supabase.from('user_progress').select('question_id, status').eq('user_id', user.id);
+      if (pData) {
+        const pMap: Record<string, string> = {};
+        pData.forEach(p => pMap[p.question_id] = p.status);
+        setProgress(pMap);
+      }
     }
-    const storedProgress = localStorage.getItem(`prepintel_progress_${user.id}`);
-    if (storedProgress) {
-      try { setProgress(JSON.parse(storedProgress)); } catch (e) {}
-    }
+    loadUserData();
   }, [user]);
 
   const [companyFilter, setCompanyFilter] = useState("All");
@@ -117,20 +128,22 @@ export default function QuestionsPage() {
   const toggleBookmark = async (qId: string) => {
     if (!user) return alert("Please sign in to bookmark questions.");
     const newBookmarks = new Set(bookmarks);
-    if (newBookmarks.has(qId)) {
+    const isRemoving = newBookmarks.has(qId);
+    if (isRemoving) {
       newBookmarks.delete(qId);
+      await supabase.from('bookmarks').delete().match({ user_id: user.id, question_id: qId });
     } else {
       newBookmarks.add(qId);
+      await supabase.from('bookmarks').insert({ user_id: user.id, question_id: qId });
     }
     setBookmarks(newBookmarks);
-    localStorage.setItem(`prepintel_bookmarks_${user.id}`, JSON.stringify(Array.from(newBookmarks)));
   };
 
   const setQuestionProgress = async (qId: string, status: string) => {
     if (!user) return alert("Please sign in to track progress.");
     const newProgress = { ...progress, [qId]: status };
     setProgress(newProgress);
-    localStorage.setItem(`prepintel_progress_${user.id}`, JSON.stringify(newProgress));
+    await supabase.from('user_progress').upsert({ user_id: user.id, question_id: qId, status: status }, { onConflict: 'user_id,question_id' });
   };
 
   const getExplanation = (q: any) => {

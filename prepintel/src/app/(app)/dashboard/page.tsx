@@ -15,7 +15,7 @@ import { DisplayAd } from "@/components/core/DisplayAd";
 import { TOPIC_STYLES, TOPIC_CATEGORIES } from "@/lib/topics";
 import { createClient } from "@/lib/supabase/client";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api";
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1";
 
 const DEFAULT_STYLE = (topic: string) => ({
   icon: Hash,
@@ -51,10 +51,17 @@ export default function DashboardOverview() {
       }
     });
 
-    const storedSkills = localStorage.getItem("prepintel_skill_profile");
-    if (storedSkills) {
-      try { setSkillProfile(JSON.parse(storedSkills)); } catch (e) {}
-    }
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const u = session?.user ?? null;
+      if (u) {
+        const { data: sData } = await supabase.from('user_skill_profile').select('topic_id, skill_level').eq('user_id', u.id);
+        if (sData) {
+          const sMap: Record<string, string> = {};
+          sData.forEach(s => sMap[s.topic_id] = s.skill_level);
+          setSkillProfile(sMap);
+        }
+      }
+    });
   }, [router, supabase]);
 
   useEffect(() => {
@@ -63,8 +70,16 @@ export default function DashboardOverview() {
     async function fetchData() {
       setLoading(true);
       try {
-        const storedSkills = localStorage.getItem("prepintel_skill_profile");
-        const sp = storedSkills ? JSON.parse(storedSkills) : null;
+        // Fetch user skill profile directly to pass to backend plan generator
+        let sp: Record<string, string> | null = null;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: sData } = await supabase.from('user_skill_profile').select('topic_id, skill_level').eq('user_id', session.user.id);
+          if (sData) {
+            sp = {};
+            sData.forEach(s => sp![s.topic_id] = s.skill_level);
+          }
+        }
         
         const [topicsRes, questionsRes, difficultyRes, trendRes, planRes] = await Promise.all([
           fetch(`${API_BASE}/topics?company=${company}&role=${role}&cycle=${cycle}`).then(r => r.ok ? r.json() : []),
