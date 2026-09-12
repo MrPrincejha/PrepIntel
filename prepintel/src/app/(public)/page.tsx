@@ -3,7 +3,6 @@
 import { Logo } from "@/components/core/Logo";
 import { GradientButton } from "@/components/core/GradientButton";
 import { GlassPanel } from "@/components/core/GlassPanel";
-import { PublicFooter } from "@/components/core/PublicFooter";
 import { Building2, BrainCircuit, Target, TrendingUp, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -15,17 +14,7 @@ export default function LandingPage() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/20 rounded-full blur-[120px] pointer-events-none opacity-50" />
       
       {/* Navbar */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-4 max-w-7xl mx-auto w-full">
-        <Logo size="lg" />
-        <div className="flex items-center gap-4">
-          <Link href="/login" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
-            Log in
-          </Link>
-          <Link href="/dashboard">
-            <GradientButton>Go to Dashboard</GradientButton>
-          </Link>
-        </div>
-      </nav>
+      
 
       {/* Hero Section */}
       <main className="relative z-10 flex-1 flex flex-col w-full">
@@ -171,7 +160,7 @@ export default function LandingPage() {
         </div>
       </main>
 
-      <PublicFooter />
+      
     </div>
   );
 }

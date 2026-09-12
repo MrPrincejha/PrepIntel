@@ -1,3 +1,5 @@
+from weighting import calculate_recency_weight, calculate_combined_weight, calculate_source_weight
+from bayesian import compute_beta_binomial_posterior, calculate_effective_sample_size
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -26,11 +28,35 @@ class PrepPlanRequest(BaseModel):
     hours: int
     skill_profile: Optional[Dict[str, str]] = None
 
-def fetch_raw_reports(company: str, role: str) -> List[Dict]:
-    if not sb: return []
-    # Fetch reports matching company (case insensitive via ilike)
+def resolve_canonical_ids(company_slug: str, role_slug: str = None) -> tuple:
+    if not sb: return None, None
+    c_id, r_id = None, None
     try:
-        res = sb.table("raw_reports").select("*").ilike("company", f"%{company}%").execute()
+        c_res = sb.table("companies").select("id").eq("slug", company_slug.lower()).execute()
+        if c_res.data: c_id = c_res.data[0]["id"]
+        
+        if role_slug:
+            r_res = sb.table("roles").select("id").eq("slug", role_slug.lower()).execute()
+            if r_res.data: r_id = r_res.data[0]["id"]
+    except Exception as e:
+        print(f"Error resolving IDs: {e}")
+    return c_id, r_id
+
+def fetch_raw_reports(company: str, role: str = None) -> List[Dict]:
+    if not sb: return []
+    
+    # 1. Resolve Slugs to canonical UUIDs
+    c_id, r_id = resolve_canonical_ids(company, role)
+    if not c_id:
+        # If company doesn't exist in our canonical DB, return no evidence
+        return []
+        
+    # 2. Query using explicit UUID foreign keys
+    try:
+        query = sb.table("raw_reports").select("*").eq("company_id", c_id)
+        if r_id:
+            query = query.eq("role_id", r_id)
+        res = query.execute()
         return res.data if res.data else []
     except Exception as e:
         print(f"Error fetching reports: {e}")
@@ -84,33 +110,69 @@ def analyze_topics_from_text(reports: List[Dict]) -> Dict[str, float]:
     return {k: v / total_matches for k, v in scores.items()}
 
 @app.get("/api/v1/topics")
-def get_topics(company: str, role: str, cycle: str):
+def get_topics(company: str, role: str = None, cycle: str = None):
     reports = fetch_raw_reports(company, role)
     if not reports:
-        return [
-            {"topic": "two-pointers", "weighted_probability": 0.33, "trend_score": 0.0},
-            {"topic": "hashing", "weighted_probability": 0.33, "trend_score": 0.0},
-            {"topic": "dfs-bfs", "weighted_probability": 0.34, "trend_score": 0.0}
-        ]
+        return []
         
-    topic_probs = analyze_topics_from_text(reports)
-    
-    # Sort and return top 5
-    sorted_topics = sorted(topic_probs.items(), key=lambda x: x[1], reverse=True)[:5]
-    
-    # No more fake data. Trend score will be explicitly 0.0 or omitted if insufficient evidence exists.
-    result = []
-    for t, p in sorted_topics:
-        if p > 0:
-            result.append({"topic": t, "weighted_probability": p, "trend_score": 0.0})
+    # Real Bayesian Aggregation
+    # In a full pipeline, topics are extracted to report_topic_observations. 
+    # Since we are live-aggregating for this MVP, we use the raw_text analyzer.
+    topics_by_report = []
+    for r in reports:
+        # Simple extraction for now
+        topics = []
+        text = r.get("raw_text", "").lower()
+        for t_slug, keywords in TOPICS.items():
+            for kw in keywords:
+                if kw in text:
+                    topics.append(t_slug)
+                    break
+        
+        # Calculate Weight
+        # Handle created_at formatting
+        try:
+            r_date = datetime.fromisoformat(r.get("created_at", "").replace("Z", "+00:00"))
+        except:
+            r_date = datetime.now()
             
+        w_r = calculate_recency_weight(r_date)
+        w_s = calculate_source_weight(r.get("source_type", "user_submission"), {"user_submission": 1.0})
+        # Default I_i to 1.0 since we haven't stored dedup clusters yet
+        w_i = calculate_combined_weight(w_r, w_s, 1.0)
+        
+        topics_by_report.append({"topics": set(topics), "weight": w_i})
+        
+    # Aggregate
+    all_possible_topics = TOPICS.keys()
+    result = []
+    
+    # Effective sample size
+    weights = [tr["weight"] for tr in topics_by_report]
+    n_eff = calculate_effective_sample_size(weights)
+    
+    for t in all_possible_topics:
+        successes = sum(tr["weight"] for tr in topics_by_report if t in tr["topics"])
+        failures = sum(tr["weight"] for tr in topics_by_report if t not in tr["topics"])
+        
+        if successes > 0:
+            post_mean, ci_low, ci_high = compute_beta_binomial_posterior(successes, failures)
+            result.append({
+                "topic": t, 
+                "weighted_probability": round(post_mean, 2), 
+                "n_eff": round(n_eff, 1),
+                "trend_score": 0.0
+            })
+            
+    # Sort and return top 5
+    result = sorted(result, key=lambda x: x["weighted_probability"], reverse=True)[:5]
     return result
 
 @app.get("/api/v1/difficulty")
-def get_difficulty(company: str, role: str, cycle: str, round_type: str = Query("oa", alias="round")):
+def get_difficulty(company: str, role: str = None, cycle: str = None, round_type: str = Query("oa", alias="round")):
     reports = fetch_raw_reports(company, role)
     if not reports:
-        return {"easy_pct": 33, "medium_pct": 34, "hard_pct": 33}
+        return {"error": "Insufficient evidence"}
         
     import re
     easy_c, med_c, hard_c = 0, 0, 0
@@ -362,15 +424,20 @@ def ingest_text(req: TextIngestRequest):
         refined_text = refine_problem_description(req.text)
         
         if sb:
+            c_id, r_id = resolve_canonical_ids(req.company, req.role)
+            # If company doesn't exist, we should ideally create it or reject.
+            # For now, if we can't resolve, we will store the raw name in metadata for manual mapping later.
+            
             payload = {
-                "company": req.company.capitalize(),
-                "role": req.role,
-                "round": req.round,
+                "company_id": c_id,
+                "role_id": r_id,
+                # "round_id" requires resolving too. We will just store the string in metadata if unresolved.
                 "source_type": "user_submission",
                 "source_url": req.url,
                 "raw_text": refined_text,
                 "submitted_by_user_id": req.user_id,
-                "status": "pending"
+                "status": "pending",
+                "metadata": {"raw_company": req.company, "raw_role": req.role, "raw_round": req.round}
             }
             sb.table("raw_reports").insert(payload).execute()
             
