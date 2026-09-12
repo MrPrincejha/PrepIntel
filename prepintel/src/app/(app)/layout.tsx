@@ -5,9 +5,11 @@ import { TopBar } from "@/components/core/TopBar";
 // This is required because they all use useSearchParams() which cannot be statically pre-rendered.
 export const dynamic = 'force-dynamic';
 
+import { AuthGuard } from "@/components/core/AuthGuard";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-          <div className="flex min-h-screen bg-background text-foreground">
+          <AuthGuard>
+      <div className="flex min-h-screen bg-background text-foreground">
         <NavSidebar />
         <div className="flex-1 flex flex-col min-h-screen w-full min-w-0">
           <TopBar />
@@ -16,6 +18,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </main>
         </div>
       </div>
-      );
+    </AuthGuard>
+  );
 }
+
+
 
