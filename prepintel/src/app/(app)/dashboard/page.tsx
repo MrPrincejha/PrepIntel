@@ -47,7 +47,7 @@ export default function DashboardOverview() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
-        router.push("/login");
+        // router.push("/login");
       }
     });
 
@@ -373,3 +373,5 @@ export default function DashboardOverview() {
     </div>
   );
 }
+
+
