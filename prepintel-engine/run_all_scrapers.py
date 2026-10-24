@@ -54,15 +54,31 @@ def run_all():
 
     # 5. LeetCode Top Canonical Problems
     try:
-        logger.info("\n>>> [5/5] Running LeetCode Canonical Catalog Scraper...")
+        logger.info("\n>>> [5/7] Running LeetCode Canonical Catalog Scraper...")
         import leetcode_problems_scraper
         leetcode_problems_scraper.run(limit=150)
     except Exception as e:
         logger.error(f"LeetCode catalog scraper error: {e}")
 
+    # 6. Company-Wise Frequency Ranked Questions (Google, Amazon, Meta, Microsoft, etc.)
+    try:
+        logger.info("\n>>> [6/7] Running Company-Wise Frequency Scraper (30 Top Tech Companies)...")
+        import company_wise_scraper
+        company_wise_scraper.run()
+    except Exception as e:
+        logger.error(f"Company-wise scraper error: {e}")
+
+    # 7. Service Companies Placement Coding PYQs (TCS NQT, Infosys, Cognizant, Wipro)
+    try:
+        logger.info("\n>>> [7/7] Ingesting Verified Service Companies PYQs (TCS, Infosys, Cognizant, Wipro)...")
+        import ingest_service_companies
+        ingest_service_companies.main()
+    except Exception as e:
+        logger.error(f"Service companies ingestion error: {e}")
+
     elapsed = round(time.time() - start_time, 2)
     logger.info(f"\n==================================================")
-    logger.info(f"All 5 multi-source scrapers finished in {elapsed}s.")
+    logger.info(f"All 7 multi-source scrapers finished in {elapsed}s.")
     logger.info(f"==================================================")
 
 if __name__ == "__main__":

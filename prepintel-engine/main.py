@@ -48,36 +48,42 @@ def fetch_raw_reports(company: str, role: str = None) -> List[Dict]:
     clean_c = company.lower().replace("-", " ").replace("+", " ").strip()
     first_word = clean_c.split()[0] if clean_c else clean_c
     
-    # 1. Try canonical UUID resolution if company exists in canonical table
-    c_id, r_id = resolve_canonical_ids(company, role)
+    reports = []
+    seen_ids = set()
     
     try:
-        reports = []
+        # 1. Primary: Text match on company column (covers all scraped data: 1000+ reports)
+        res_text = sb.table("raw_reports").select("*").ilike("company", f"%{first_word}%").execute()
+        if res_text.data:
+            for r in res_text.data:
+                if r["id"] not in seen_ids:
+                    seen_ids.add(r["id"])
+                    reports.append(r)
+
+        # 2. Secondary: Canonical UUID resolution for old seeded reports
+        c_id, r_id = resolve_canonical_ids(company, role)
         if c_id:
             query = sb.table("raw_reports").select("*").eq("company_id", c_id)
             if r_id:
                 query = query.eq("role_id", r_id)
-            res = query.execute()
-            if res.data:
-                reports = res.data
-
-        # 2. Fallback to flexible company name pattern matching
-        if not reports:
-            query = sb.table("raw_reports").select("*").ilike("company", f"%{first_word}%")
-            res = query.execute()
-            reports = res.data or []
-            
-            # Filter by role if requested
-            if role and role.lower() not in ["all", "any"]:
-                clean_r = role.lower().replace("-", " ").replace("+", " ").strip()
-                role_filtered = [r for r in reports if clean_r in str(r.get("role", "")).lower() or str(r.get("role", "")).lower() in clean_r]
-                if role_filtered:
-                    reports = role_filtered
-                    
+            res_id = query.execute()
+            if res_id.data:
+                for r in res_id.data:
+                    if r["id"] not in seen_ids:
+                        seen_ids.add(r["id"])
+                        reports.append(r)
+                        
+        # Filter by role if requested
+        if role and role.lower() not in ["all", "any"]:
+            clean_r = role.lower().replace("-", " ").replace("+", " ").strip()
+            role_filtered = [r for r in reports if clean_r in str(r.get("role", "")).lower() or str(r.get("role", "")).lower() in clean_r]
+            if role_filtered:
+                reports = role_filtered
+                
         return reports
     except Exception as e:
         print(f"Error fetching reports: {e}")
-        return []
+        return reports
 
 TOPICS = {
     "hashing": ["hash", "map", "frequency", "duplicates", "membership", "unordered_map"],
@@ -316,39 +322,40 @@ def get_questions(company: str = "", role: str = "", cycle: str = "", limit: int
             first_line = lines[0]
             header_match = re.match(r'^(?:#{1,4}\s*)?(?:\d+\.\s+|(?:Q|Question|Problem)\s*\d+\s*[:\-\.]?\s*|\*\*(?:Q|Question)\s*\d+\*\*\s*[:\-\.]?\s*)(.*)', first_line, re.IGNORECASE)
             
-            if len(chunks) > 1 and i == 0 and not header_match:
-                continue
-                
             title = ""
             
+            # 1. Numbered question header: e.g. "### 1. Two Sum"
             if header_match and len(header_match.group(1).strip()) > 3:
                 raw_h = header_match.group(1).strip().replace("*", "").replace("#", "").strip()
                 if not any(raw_h.lower().startswith(p) or p in raw_h.lower() for p in ["[question", "question title", "your solution"]):
                     title = raw_h
-                
+
+            # 2. Markdown heading: e.g. "# Absolute Difference" or "## Reverse Linked List"
             if not title:
-                skip_words = ["prepintel", "overview", "questions", "roadmap", "reports", "bookmarks", "progress", "analytics", "admin queue", "issues", "questions explorer", "personalize for me", "all difficulties", "all topics", "bookmarked", "no questions found", "search topics", "company:", "role:", "year:", "why was this question recommended?", "topic match", "pattern match", "recency", "difficulty fit", "direct evidence", "full problem description"]
+                hash_match = re.match(r'^#{1,4}\s+(.+)', first_line)
+                if hash_match:
+                    h_cand = hash_match.group(1).strip().replace("*", "").replace("#", "").strip()
+                    if 3 < len(h_cand) < 80 and not any(h_cand.lower().startswith(p) for p in ["company:", "round:", "role:", "year:", "note:", "question title", "[question", "eligibility"]):
+                        title = h_cand
                 
+            # 3. Fallback scan body lines
+            if not title:
+                skip_prefixes = (
+                    "prepintel", "overview", "questions", "roadmap", "reports", "bookmarks",
+                    "progress", "analytics", "admin", "issues", "personalize", "search",
+                    "company:", "role:", "year:", "round:", "note:", "input:", "output:",
+                    "example", "explanation", "constraints:", "problem statement", "problem description",
+                    "you are given", "consider the", "def ", "class ", "int ", "public ", "import ",
+                    "eligibility", "criteria", "round 1", "round 2", "round 3", "this year"
+                )
                 for line in lines:
-                    clean_line = line.strip()
+                    clean_line = line.strip().replace("#", "").replace("*", "").replace("-", "").strip()
                     clean_lower = clean_line.lower()
-                    
-                    if clean_line.startswith('-') or clean_line.startswith('#') or clean_line.startswith('*') or clean_line.startswith('**'):
+                    if len(clean_line) < 6 or clean_lower.startswith(skip_prefixes):
                         continue
-                        
-                    is_ui_junk = any(clean_lower.startswith(w) or clean_lower == w for w in skip_words)
-                    if is_ui_junk: continue
-                    
-                    if len(clean_line) > 10 and company.lower() not in clean_lower:
-                        title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
-                        break
-                        
-            if not title and lines:
-                for line in lines:
-                    clean_line = line.replace("#", "").replace("-", "").replace("*", "").strip()
-                    clean_lower = clean_line.lower()
-                    is_ui_junk = any(w in clean_lower for w in skip_words)
-                    if len(clean_line) > 5 and company.lower() not in clean_lower and not is_ui_junk:
+                    if any(w in clean_lower for w in ["write the complete problem", "[question title]"]):
+                        continue
+                    if len(clean_line) > 8 and (company.lower() not in clean_lower or len(clean_line) > len(company) + 15):
                         title = clean_line[:60] + "..." if len(clean_line) > 60 else clean_line
                         break
                         
@@ -365,7 +372,7 @@ def get_questions(company: str = "", role: str = "", cycle: str = "", limit: int
                 if topic_probs:
                     q_tags = [max(topic_probs.items(), key=lambda x: x[1])[0]]
                 else:
-                    q_tags = ["two-pointers"]
+                    q_tags = ["arrays"]
             
             l = len(text_lower)
             if "hard" in text_lower or l > 1200: diff = "Hard"
@@ -384,46 +391,80 @@ def get_questions(company: str = "", role: str = "", cycle: str = "", limit: int
                 "raw_text": text,
                 "tags": list(set(q_tags)),
                 "difficulty": diff,
-                "url": f"/reports?company={company}&role={role}",
+                "url": r.get("source_url") or f"/reports?company={company}&role={role}",
                 "final_recommendation_score": min(99, int(score)),
                 "topic_score": min(99, int(score)),
-                "pattern_score": 70,
+                "pattern_score": 75,
                 "recency_score": 90,
                 "difficulty_fit": 80,
-                "direct_evidence_score": 100
+                "direct_evidence_score": 95
             })
             question_idx += 1
-        
-    if not dynamic_questions:
-        base_questions = [
-            {"id": "q1", "title": "Longest Increasing Subsequence", "tags": ["1d-dp", "binary-search"], "difficulty": "Hard", "url": "https://leetcode.com/problems/longest-increasing-subsequence/"},
-            {"id": "q2", "title": "Merge Intervals", "tags": ["arrays", "sorting"], "difficulty": "Medium", "url": "https://leetcode.com/problems/merge-intervals/"},
-            {"id": "q3", "title": "Two Sum", "tags": ["arrays", "hashing"], "difficulty": "Easy", "url": "https://leetcode.com/problems/two-sum/"},
-            {"id": "q4", "title": "Course Schedule", "tags": ["graphs", "dfs"], "difficulty": "Medium", "url": "https://leetcode.com/problems/course-schedule/"},
-            {"id": "q5", "title": "Meeting Rooms II", "tags": ["greedy", "arrays"], "difficulty": "Medium", "url": "https://leetcode.com/problems/meeting-rooms-ii/"},
-            {"id": "q6", "title": "Number of Islands", "tags": ["graphs", "bfs"], "difficulty": "Medium", "url": "https://leetcode.com/problems/number-of-islands/"},
-        ]
-        dynamic_questions = base_questions
-        for q in dynamic_questions:
-            score = 50
-            for tag in q['tags']:
-                if tag in topic_probs: score += (topic_probs[tag] * 100)
-            q['final_recommendation_score'] = min(99, int(score))
-            q['topic_score'] = min(99, int(score))
-            q['pattern_score'] = 70
-            q['recency_score'] = 80
-            q['difficulty_fit'] = 80
-            q['direct_evidence_score'] = 90
             
+    # Sort and filter distinct titles
     sorted_q = sorted(dynamic_questions, key=lambda x: x['final_recommendation_score'], reverse=True)
-    
-    # Ensure distinct titles to prevent clutter
     seen_titles = set()
     unique_q = []
     for q in sorted_q:
         if q['title'] not in seen_titles:
             seen_titles.add(q['title'])
             unique_q.append(q)
+
+    # Augment with canonical questions from database if fewer than 15 questions
+    if sb and len(unique_q) < 15:
+        first_word = company.lower().split()[0] if company else ""
+        try:
+            # 1. Company-matched questions in DB
+            db_res = sb.table("questions").select("*").ilike("slug", f"%{first_word}%").limit(25).execute()
+            for row in (db_res.data or []):
+                t = row.get("canonical_title")
+                if t and t not in seen_titles:
+                    seen_titles.add(t)
+                    unique_q.append({
+                        "id": row.get("id"),
+                        "title": t,
+                        "company": company,
+                        "raw_text": f"Canonical question frequently asked in {company} technical rounds.",
+                        "tags": ["arrays", "problem-solving"],
+                        "difficulty": row.get("difficulty_label", "Medium"),
+                        "url": f"/questions/{row.get('id')}",
+                        "final_recommendation_score": 88,
+                        "topic_score": 85,
+                        "pattern_score": 80,
+                        "recency_score": 85,
+                        "difficulty_fit": 80,
+                        "direct_evidence_score": 90
+                    })
+                    if len(unique_q) >= limit:
+                        break
+                        
+            # 2. General popular canonical questions if still under 10
+            if len(unique_q) < 10:
+                gen_res = sb.table("questions").select("*").limit(20).execute()
+                for row in (gen_res.data or []):
+                    t = row.get("canonical_title")
+                    if t and t not in seen_titles:
+                        seen_titles.add(t)
+                        unique_q.append({
+                            "id": row.get("id"),
+                            "title": t,
+                            "company": company,
+                            "raw_text": f"Core interview problem recommended for {company}.",
+                            "tags": ["two-pointers", "hashing"],
+                            "difficulty": row.get("difficulty_label", "Medium"),
+                            "url": f"/questions/{row.get('id')}",
+                            "final_recommendation_score": 82,
+                            "topic_score": 80,
+                            "pattern_score": 75,
+                            "recency_score": 80,
+                            "difficulty_fit": 80,
+                            "direct_evidence_score": 85
+                        })
+                        if len(unique_q) >= 15:
+                            break
+        except Exception as e:
+            print(f"Error augmenting questions from DB: {e}")
+
     result = unique_q[:limit]
     QUESTIONS_CACHE[cache_key] = {'time': time.time(), 'data': result}
     return result
