@@ -43,21 +43,38 @@ def resolve_canonical_ids(company_slug: str, role_slug: str = None) -> tuple:
     return c_id, r_id
 
 def fetch_raw_reports(company: str, role: str = None) -> List[Dict]:
-    if not sb: return []
+    if not sb or not company: return []
     
-    # 1. Resolve Slugs to canonical UUIDs
+    clean_c = company.lower().replace("-", " ").replace("+", " ").strip()
+    first_word = clean_c.split()[0] if clean_c else clean_c
+    
+    # 1. Try canonical UUID resolution if company exists in canonical table
     c_id, r_id = resolve_canonical_ids(company, role)
-    if not c_id:
-        # If company doesn't exist in our canonical DB, return no evidence
-        return []
-        
-    # 2. Query using explicit UUID foreign keys
+    
     try:
-        query = sb.table("raw_reports").select("*").eq("company_id", c_id)
-        if r_id:
-            query = query.eq("role_id", r_id)
-        res = query.execute()
-        return res.data if res.data else []
+        reports = []
+        if c_id:
+            query = sb.table("raw_reports").select("*").eq("company_id", c_id)
+            if r_id:
+                query = query.eq("role_id", r_id)
+            res = query.execute()
+            if res.data:
+                reports = res.data
+
+        # 2. Fallback to flexible company name pattern matching
+        if not reports:
+            query = sb.table("raw_reports").select("*").ilike("company", f"%{first_word}%")
+            res = query.execute()
+            reports = res.data or []
+            
+            # Filter by role if requested
+            if role and role.lower() not in ["all", "any"]:
+                clean_r = role.lower().replace("-", " ").replace("+", " ").strip()
+                role_filtered = [r for r in reports if clean_r in str(r.get("role", "")).lower() or str(r.get("role", "")).lower() in clean_r]
+                if role_filtered:
+                    reports = role_filtered
+                    
+        return reports
     except Exception as e:
         print(f"Error fetching reports: {e}")
         return []

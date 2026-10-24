@@ -225,8 +225,8 @@ export default function DashboardOverview() {
                   labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}
                 />
                 <Legend verticalAlign="bottom" height={36} wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
-                {/* Dynamically render lines based on top 3 topics */}
-                {topics.slice(0, 3).map((t) => {
+                {/* Dynamically render lines based on top topics or keys in trend */}
+                {(topics.length > 0 ? topics.slice(0, 3) : (trend.length > 0 ? Object.keys(trend[0]).filter(k => k !== 'month').slice(0, 3).map(k => ({ topic: k })) : [])).map((t) => {
                    const style = TOPIC_STYLES[t.topic] || DEFAULT_STYLE(t.topic);
                    return <Line key={t.topic} type="monotone" dataKey={t.topic} name={style.name} stroke={style.hex} strokeWidth={2} dot={{ r: 3, fill: '#0B0D14', strokeWidth: 2 }} activeDot={{ r: 5, strokeWidth: 0 }} />;
                 })}
