@@ -24,11 +24,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests supabase python-dotenv
 
-      - name: Run GitHub Scraper
+      - name: Run Multi-Source Scrapers (GitHub, LeetCode, GFG)
         env:
           GITHUB_PAT: ${{ secrets.PAT }}
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           cd prepintel-engine
-          python github_scraper.py
+          python run_all_scrapers.py
