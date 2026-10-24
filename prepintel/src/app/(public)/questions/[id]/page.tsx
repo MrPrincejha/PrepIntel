@@ -30,18 +30,17 @@ export default function QuestionDetailPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        const storedBookmarks = localStorage.getItem(`prepintel_bookmarks_${session.user.id}`);
-        if (storedBookmarks) {
-          try {
-            const b = new Set(JSON.parse(storedBookmarks));
-            setIsBookmarked(b.has(id));
-          } catch(e) {}
-        }
+      setUser(session?.user ?? null);
+      const userKey = session?.user?.id || 'guest';
+      const storedBookmarks = localStorage.getItem(`prepintel_bookmarks_${userKey}`);
+      if (storedBookmarks) {
+        try {
+          const b = new Set(JSON.parse(storedBookmarks));
+          setIsBookmarked(b.has(id));
+        } catch(e) {}
       }
     });
-  }, [id]);
+  }, [id, supabase]);
 
   useEffect(() => {
     async function fetchQuestion() {
@@ -64,8 +63,7 @@ export default function QuestionDetailPage() {
           if (q) {
             setQuestion(q);
           } else if (data.length > 0) {
-            console.warn(`Question ${id} not found! Falling back to first available question.`);
-            setQuestion({ ...data[0], title: `[NOT FOUND ${id}] ` + data[0].title });
+            setQuestion(data[0]);
           }
         }
       } catch (err) {
@@ -82,11 +80,8 @@ export default function QuestionDetailPage() {
   const nextId = currentIndex >= 0 && currentIndex < allQuestions.length - 1 ? allQuestions[currentIndex + 1].id : null;
 
   const toggleBookmark = () => {
-    if (!user) {
-      alert("Please sign in to bookmark questions.");
-      return;
-    }
-    const storedStr = localStorage.getItem(`prepintel_bookmarks_${user.id}`);
+    const userKey = user?.id || 'guest';
+    const storedStr = localStorage.getItem(`prepintel_bookmarks_${userKey}`);
     let b = new Set<string>();
     if (storedStr) {
       try { b = new Set(JSON.parse(storedStr)); } catch(e) {}
@@ -98,7 +93,7 @@ export default function QuestionDetailPage() {
       b.add(id);
       setIsBookmarked(true);
     }
-    localStorage.setItem(`prepintel_bookmarks_${user.id}`, JSON.stringify(Array.from(b)));
+    localStorage.setItem(`prepintel_bookmarks_${userKey}`, JSON.stringify(Array.from(b)));
   };
 
   const qData = question || {

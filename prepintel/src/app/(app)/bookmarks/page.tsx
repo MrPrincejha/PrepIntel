@@ -128,9 +128,6 @@ export default function BookmarksPage() {
           </div>
         ) : (
             <>
-            <div className="p-4 border-b border-border bg-black/10">
-              <DisplayAd />
-            </div>
             <div className="divide-y divide-border">
             {filteredQuestions.map((q) => {
               const pStatus = progress[q.id] || "not_started";

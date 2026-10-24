@@ -337,9 +337,6 @@ export default function AnalyticsPage() {
           </div>
 
         </div>
-        <div className="mt-8">
-          <DisplayAd />
-        </div>
         </>
       )}
     </div>

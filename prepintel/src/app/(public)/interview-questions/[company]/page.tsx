@@ -4,7 +4,7 @@ import { Metadata } from 'next'
 import { DifficultyBadge } from '@/components/core/DifficultyBadge'
 import { TOPIC_STYLES } from '@/lib/topics'
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api"
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api/v1"
 
 export async function generateMetadata({ params }: any): Promise<Metadata> {
   const { company } = await params

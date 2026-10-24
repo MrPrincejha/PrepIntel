@@ -313,7 +313,12 @@ export default function DashboardOverview() {
                 <div className="flex items-center gap-3 mb-2 sm:mb-0 min-w-0">
                   <span className="text-white/30 font-mono text-sm w-4">{i + 1}</span>
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-medium text-white/90 group-hover:text-white transition-colors truncate">{q.title}</span>
+                    <Link
+                      href={`/questions/${q.id}?company=${company}&role=${role}&cycle=${cycle}`}
+                      className="text-sm font-medium text-white/90 hover:text-primary transition-colors truncate max-w-[180px] sm:max-w-md"
+                    >
+                      {q.title}
+                    </Link>
                     {personalize && q._gapReason && (
                       <span className="text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 flex-shrink-0">
                         Priority boost: {TOPIC_STYLES[q._gapReason]?.name || q._gapReason} gap
@@ -346,26 +351,31 @@ export default function DashboardOverview() {
             </Link>
           </div>
           <div className="flex-1 flex flex-col justify-center gap-6">
-            {[
-              { week: "Week 1", days: "Days 1-7", topics: "Arrays, Hashing, Two Pointers", progress: 100 },
-              { week: "Week 2", days: "Days 8-14", topics: "Sliding Window, Stack, 1D DP", progress: 45 },
-            ].map((plan, i) => (
-              <div key={i} className="space-y-2 opacity-50">
-                <div className="flex items-center justify-between text-sm">
-                  <div>
-                    <span className="font-semibold text-white">{plan.week}</span>
-                    <span className="text-white/50 ml-2">({plan.days}): {plan.topics}</span>
+            {(prepPlan.length > 0 ? prepPlan.slice(0, 2) : [
+              { week: "Week 1", days: "Days 1-7", topics: ["hashing", "dynamic-programming"], progress: 0 },
+              { week: "Week 2", days: "Days 8-14", topics: ["sliding-window", "binary-search"], progress: 0 },
+            ]).map((plan: any, i: number) => {
+              const topicStr = Array.isArray(plan.topics)
+                ? plan.topics.map((t: string) => TOPIC_STYLES[t]?.name || t).join(", ")
+                : plan.topics;
+              return (
+                <div key={i} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div>
+                      <span className="font-semibold text-white">{plan.week}</span>
+                      <span className="text-white/50 ml-2">({plan.days}): {topicStr}</span>
+                    </div>
+                    <span className="font-mono text-white/70">{plan.progress || 0}%</span>
                   </div>
-                  <span className="font-mono text-white/70">{plan.progress}%</span>
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className={cn("h-full rounded-full transition-all duration-1000", plan.progress === 100 ? "bg-status-success" : "bg-gradient-primary")} 
+                      style={{ width: `${plan.progress || 0}%` }} 
+                    />
+                  </div>
                 </div>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div 
-                    className={cn("h-full rounded-full transition-all duration-1000", plan.progress === 100 ? "bg-status-success" : "bg-gradient-primary")} 
-                    style={{ width: `${plan.progress}%` }} 
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
             
             <div className="mt-4 p-5 rounded-xl border border-dashed border-border/60 bg-transparent flex flex-col items-center justify-center text-center">
               <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-3">
@@ -382,6 +392,9 @@ export default function DashboardOverview() {
           </div>
         </GlassPanel>
       </div>
+
+      {/* Google AdSense Display Ad */}
+      <DisplayAd />
     </div>
   );
 }
