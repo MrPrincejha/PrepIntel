@@ -246,7 +246,8 @@ def get_questions(company: str = "", role: str = "", cycle: str = "", limit: int
         
         for i, chunk in enumerate(chunks):
             text = chunk.strip()
-            if len(text) < 40:
+            text_lower = text.lower()
+            if len(text) < 40 or "write the complete problem statement" in text_lower or "[question title]" in text_lower:
                 continue
                 
             lines = [line.strip() for line in text.split('\n') if line.strip()]
@@ -261,7 +262,9 @@ def get_questions(company: str = "", role: str = "", cycle: str = "", limit: int
             title = ""
             
             if header_match and len(header_match.group(1).strip()) > 3:
-                title = header_match.group(1).strip().replace("*", "").replace("#", "")
+                raw_h = header_match.group(1).strip().replace("*", "").replace("#", "").strip()
+                if not any(raw_h.lower().startswith(p) or p in raw_h.lower() for p in ["[question", "question title", "your solution"]):
+                    title = raw_h
                 
             if not title:
                 skip_words = ["prepintel", "overview", "questions", "roadmap", "reports", "bookmarks", "progress", "analytics", "admin queue", "issues", "questions explorer", "personalize for me", "all difficulties", "all topics", "bookmarked", "no questions found", "search topics", "company:", "role:", "year:", "why was this question recommended?", "topic match", "pattern match", "recency", "difficulty fit", "direct evidence", "full problem description"]

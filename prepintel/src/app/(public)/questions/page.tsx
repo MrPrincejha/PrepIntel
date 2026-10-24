@@ -70,20 +70,30 @@ function QuestionsPageContent() {
   }, [questionsData]);
 
   useEffect(() => {
-    if (!user) return;
     async function loadUserData() {
-      const { data: bData } = await supabase.from('bookmarks').select('question_id').eq('user_id', user.id);
-      if (bData) setBookmarks(new Set(bData.map(b => b.question_id)));
-      
-      const { data: pData } = await supabase.from('user_progress').select('question_id, status').eq('user_id', user.id);
-      if (pData) {
-        const pMap: Record<string, string> = {};
-        pData.forEach(p => pMap[p.question_id] = p.status);
-        setProgress(pMap);
+      if (user) {
+        const { data: bData } = await supabase.from('bookmarks').select('question_id').eq('user_id', user.id);
+        if (bData) setBookmarks(new Set(bData.map(b => b.question_id)));
+        
+        const { data: pData } = await supabase.from('user_progress').select('question_id, status').eq('user_id', user.id);
+        if (pData) {
+          const pMap: Record<string, string> = {};
+          pData.forEach(p => pMap[p.question_id] = p.status);
+          setProgress(pMap);
+        }
+      } else {
+        const storedB = localStorage.getItem('prepintel_bookmarks_guest');
+        if (storedB) {
+          try { setBookmarks(new Set(JSON.parse(storedB))); } catch (e) {}
+        }
+        const storedP = localStorage.getItem('prepintel_progress_guest');
+        if (storedP) {
+          try { setProgress(JSON.parse(storedP)); } catch (e) {}
+        }
       }
     }
     loadUserData();
-  }, [user]);
+  }, [user, supabase]);
 
   const [companyFilter, setCompanyFilter] = useState("All");
 
@@ -126,24 +136,35 @@ function QuestionsPageContent() {
   }, [questions, difficultyFilter, topicFilter, onlyBookmarked, bookmarks, personalize, skillProfile]);
 
   const toggleBookmark = async (qId: string) => {
-    if (!user) return alert("Please sign in to bookmark questions.");
     const newBookmarks = new Set(bookmarks);
     const isRemoving = newBookmarks.has(qId);
     if (isRemoving) {
       newBookmarks.delete(qId);
-      await supabase.from('bookmarks').delete().match({ user_id: user.id, question_id: qId });
     } else {
       newBookmarks.add(qId);
-      await supabase.from('bookmarks').insert({ user_id: user.id, question_id: qId });
     }
     setBookmarks(newBookmarks);
+
+    if (user) {
+      if (isRemoving) {
+        await supabase.from('bookmarks').delete().match({ user_id: user.id, question_id: qId });
+      } else {
+        await supabase.from('bookmarks').insert({ user_id: user.id, question_id: qId });
+      }
+    } else {
+      localStorage.setItem('prepintel_bookmarks_guest', JSON.stringify(Array.from(newBookmarks)));
+    }
   };
 
   const setQuestionProgress = async (qId: string, status: string) => {
-    if (!user) return alert("Please sign in to track progress.");
     const newProgress = { ...progress, [qId]: status };
     setProgress(newProgress);
-    await supabase.from('user_progress').upsert({ user_id: user.id, question_id: qId, status: status }, { onConflict: 'user_id,question_id' });
+
+    if (user) {
+      await supabase.from('user_progress').upsert({ user_id: user.id, question_id: qId, status: status }, { onConflict: 'user_id,question_id' });
+    } else {
+      localStorage.setItem('prepintel_progress_guest', JSON.stringify(newProgress));
+    }
   };
 
   const getExplanation = (q: any) => {

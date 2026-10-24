@@ -33,17 +33,19 @@ export default function AnalyticsPage() {
   }, []);
 
   const handleSave = async () => {
-    if (!user) return alert("Please sign in to save your profile.");
+    localStorage.setItem("prepintel_skill_profile", JSON.stringify(profile));
     
-    // Upsert all profile entries to Supabase
-    const upserts = Object.entries(profile).map(([topic_id, skill_level]) => ({
-      user_id: user.id,
-      topic_id,
-      skill_level
-    }));
-    
-    if (upserts.length > 0) {
-      await supabase.from('user_skill_profile').upsert(upserts, { onConflict: 'user_id,topic_id' });
+    if (user) {
+      // Upsert all profile entries to Supabase
+      const upserts = Object.entries(profile).map(([topic_id, skill_level]) => ({
+        user_id: user.id,
+        topic_id,
+        skill_level
+      }));
+      
+      if (upserts.length > 0) {
+        await supabase.from('user_skill_profile').upsert(upserts, { onConflict: 'user_id,topic_id' });
+      }
     }
     
     setSaved(true);

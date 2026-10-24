@@ -46,16 +46,15 @@ export default function BookmarksPage() {
           setQuestions(data);
         }
         
-        if (user) {
-          const storedBookmarks = localStorage.getItem(`prepintel_bookmarks_${user.id}`);
-          if (storedBookmarks) {
-            try { setBookmarks(new Set(JSON.parse(storedBookmarks))); } catch (e) {}
-          }
-          
-          const storedProgress = localStorage.getItem(`prepintel_progress_${user.id}`);
-          if (storedProgress) {
-            try { setProgress(JSON.parse(storedProgress)); } catch (e) {}
-          }
+        const userKey = user?.id || 'guest';
+        const storedBookmarks = localStorage.getItem(`prepintel_bookmarks_${userKey}`);
+        if (storedBookmarks) {
+          try { setBookmarks(new Set(JSON.parse(storedBookmarks))); } catch (e) {}
+        }
+        
+        const storedProgress = localStorage.getItem(`prepintel_progress_${userKey}`);
+        if (storedProgress) {
+          try { setProgress(JSON.parse(storedProgress)); } catch (e) {}
         }
       } catch (err) {
         console.error("Error fetching", err);
@@ -70,37 +69,35 @@ export default function BookmarksPage() {
   }, [questions, bookmarks]);
 
   const toggleBookmark = async (qId: string) => {
-    if (!user) return alert("Please sign in.");
+    const userKey = user?.id || 'guest';
     const newBookmarks = new Set(bookmarks);
     if (newBookmarks.has(qId)) {
       newBookmarks.delete(qId);
-      setBookmarks(newBookmarks);
-      localStorage.setItem(`prepintel_bookmarks_${user.id}`, JSON.stringify(Array.from(newBookmarks)));
+    } else {
+      newBookmarks.add(qId);
+    }
+    setBookmarks(newBookmarks);
+    localStorage.setItem(`prepintel_bookmarks_${userKey}`, JSON.stringify(Array.from(newBookmarks)));
+    if (user) {
+      if (!newBookmarks.has(qId)) {
+        await supabase.from('bookmarks').delete().match({ user_id: user.id, question_id: qId });
+      } else {
+        await supabase.from('bookmarks').insert({ user_id: user.id, question_id: qId });
+      }
     }
   };
 
   const setQuestionProgress = async (qId: string, status: string) => {
-    if (!user) return alert("Please sign in.");
-    setProgress(prev => ({ ...prev, [qId]: status }));
-    const existing = progress[qId];
-    if (existing) {
-      await supabase.from('user_progress').update({ status }).match({ user_id: user.id, question_id: qId });
-    } else {
-      await supabase.from('user_progress').insert({ user_id: user.id, question_id: qId, status });
+    const userKey = user?.id || 'guest';
+    setProgress(prev => {
+      const updated = { ...prev, [qId]: status };
+      localStorage.setItem(`prepintel_progress_${userKey}`, JSON.stringify(updated));
+      return updated;
+    });
+    if (user) {
+      await supabase.from('user_progress').upsert({ user_id: user.id, question_id: qId, status });
     }
   };
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center space-y-4">
-          <Star className="w-12 h-12 text-amber-400 mx-auto opacity-50" />
-          <h2 className="text-xl font-bold text-white">Sign in to view Bookmarks</h2>
-          <p className="text-white/50 text-sm max-w-sm mx-auto">Your saved questions will appear here once you create an account.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">

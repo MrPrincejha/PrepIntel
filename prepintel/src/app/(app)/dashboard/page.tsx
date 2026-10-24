@@ -43,14 +43,7 @@ export default function DashboardOverview() {
 
   const [personalize, setPersonalize] = useState(false);
   const [skillProfile, setSkillProfile] = useState<Record<string, string>>({});
-
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        router.push("/login");
-      }
-    });
-
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const u = session?.user ?? null;
       if (u) {
@@ -59,6 +52,13 @@ export default function DashboardOverview() {
           const sMap: Record<string, string> = {};
           sData.forEach(s => sMap[s.topic_id] = s.skill_level);
           setSkillProfile(sMap);
+        }
+      } else {
+        const stored = localStorage.getItem("prepintel_skill_profile");
+        if (stored) {
+          try {
+            setSkillProfile(JSON.parse(stored));
+          } catch (e) {}
         }
       }
     });
@@ -382,9 +382,6 @@ export default function DashboardOverview() {
           </div>
         </GlassPanel>
       </div>
-      
-      {/* Manual Display Ad */}
-      <DisplayAd />
     </div>
   );
 }

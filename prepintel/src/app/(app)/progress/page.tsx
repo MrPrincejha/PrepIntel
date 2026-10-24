@@ -34,47 +34,31 @@ export default function ProgressPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) {
-        const stored = localStorage.getItem(`prepintel_progress_${session.user.id}`);
-        if (stored) {
-          try { setProgress(JSON.parse(stored)); } catch (e) {}
-        }
-        
-        const lc = localStorage.getItem(`prepintel_lc_${session.user.id}`) || "";
-        const cf = localStorage.getItem(`prepintel_cf_${session.user.id}`) || "";
-        setLcHandle(lc);
-        setCfHandle(cf);
+      const userKey = session?.user?.id || 'guest';
+      const stored = localStorage.getItem(`prepintel_progress_${userKey}`);
+      if (stored) {
+        try { setProgress(JSON.parse(stored)); } catch (e) {}
       }
+      
+      const lc = localStorage.getItem(`prepintel_lc_${userKey}`) || "";
+      const cf = localStorage.getItem(`prepintel_cf_${userKey}`) || "";
+      setLcHandle(lc);
+      setCfHandle(cf);
     });
   }, []);
 
   const { data: questionsData, loading: qLoading } = useCachedApi<any[]>(
-    user ? `${API_BASE}/questions?company=${company}&role=${role}&cycle=${cycle}&limit=50` : null
+    `${API_BASE}/questions?company=${company}&role=${role}&cycle=${cycle}&limit=50`
   );
 
   const { data: statsData } = useCachedApi<any>(
-    user && (lcHandle || cfHandle) ? `${API_BASE}/progress/unified?lc_handle=${lcHandle}&cf_handle=${cfHandle}` : null
+    (lcHandle || cfHandle) ? `${API_BASE}/progress/unified?lc_handle=${lcHandle}&cf_handle=${cfHandle}` : null
   );
 
   useEffect(() => {
     if (questionsData) setQuestions(questionsData);
     if (statsData) setUnifiedStats(statsData);
   }, [questionsData, statsData]);
-
-  // wait a bit for user to load if undefined
-  if (user === null) return null;
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center space-y-4">
-          <Target className="w-12 h-12 text-primary mx-auto opacity-50" />
-          <h2 className="text-xl font-bold text-foreground">Sign in to track Progress</h2>
-          <p className="text-muted-foreground text-sm max-w-sm mx-auto">Your study progress will appear here once you create an account.</p>
-        </div>
-      </div>
-    );
-  }
 
   // Derived Stats
   const totalRelevant = questions.length || 1;
