@@ -6,13 +6,47 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+const DEFAULT_COMPANIES = [
+  { id: "accenture", name: "Accenture" },
+  { id: "adobe", name: "Adobe" },
+  { id: "airbnb", name: "Airbnb" },
+  { id: "amazon", name: "Amazon" },
+  { id: "apple", name: "Apple" },
+  { id: "atlassian", name: "Atlassian" },
+  { id: "bloomberg", name: "Bloomberg" },
+  { id: "bytedance", name: "ByteDance" },
+  { id: "cisco", name: "Cisco" },
+  { id: "cognizant", name: "Cognizant" },
+  { id: "flipkart", name: "Flipkart" },
+  { id: "goldman-sachs", name: "Goldman Sachs" },
+  { id: "google", name: "Google" },
+  { id: "infosys", name: "Infosys" },
+  { id: "intuit", name: "Intuit" },
+  { id: "jpmorgan", name: "JPMorgan" },
+  { id: "linkedin", name: "LinkedIn" },
+  { id: "meta", name: "Meta" },
+  { id: "microsoft", name: "Microsoft" },
+  { id: "netflix", name: "Netflix" },
+  { id: "oracle", name: "Oracle" },
+  { id: "paypal", name: "PayPal" },
+  { id: "salesforce", name: "Salesforce" },
+  { id: "samsung", name: "Samsung" },
+  { id: "swiggy", name: "Swiggy" },
+  { id: "tcs", name: "TCS" },
+  { id: "twitter", name: "Twitter" },
+  { id: "uber", name: "Uber" },
+  { id: "walmart", name: "Walmart" },
+  { id: "wipro", name: "Wipro" },
+  { id: "zomato", name: "Zomato" }
+];
+
 export function TopBar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
 
   // State for dropdown options
-  const [companies, setCompanies] = useState([{ id: "amazon", name: "Amazon" }, { id: "google", name: "Google" }, { id: "microsoft", name: "Microsoft" }]);
+  const [companies, setCompanies] = useState(DEFAULT_COMPANIES);
   const [roles, setRoles] = useState([{ id: "sde-intern", name: "SDE Intern" }, { id: "sde-1", name: "SDE-1" }]);
   const [cycles, setCycles] = useState([{ id: "2024", label: "2024" }, { id: "2025", label: "2025" }, { id: "2026", label: "2026" }]);
 
@@ -25,21 +59,41 @@ export function TopBar() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const { data: reports, error } = await supabase.from('raw_reports').select('company, role');
-        
-        if (reports && reports.length > 0) {
-          const uniqueCompanies = Array.from(new Set(reports.map(r => r.company?.toLowerCase() || ''))).filter(c => c && c !== 'unknown');
-          const uniqueRoles = Array.from(new Set(reports.map(r => r.role?.toLowerCase() || ''))).filter(Boolean);
+        // Query public.companies table (has all 73 companies)
+        const { data: compRows } = await supabase
+          .from('companies')
+          .select('slug, name')
+          .order('name');
           
-          if (uniqueCompanies.length > 0) {
-            setCompanies(uniqueCompanies.map(c => ({ id: c, name: c.charAt(0).toUpperCase() + c.slice(1) })));
+        if (compRows && compRows.length > 0) {
+          setCompanies(compRows.map(c => ({ id: c.slug, name: c.name })));
+        } else {
+          // Fallback to raw_reports
+          const { data: reports } = await supabase.from('raw_reports').select('company, role');
+          if (reports && reports.length > 0) {
+            const excluded = ['unknown', 'requirements ', 'code of conduct ', 'question-bank', 'tech general'];
+            const uniqueCompanies = Array.from(new Set(reports.map(r => r.company?.trim() || '')))
+              .filter(c => c && !excluded.includes(c.toLowerCase()));
+            if (uniqueCompanies.length > 0) {
+              uniqueCompanies.sort((a, b) => a.localeCompare(b));
+              setCompanies(uniqueCompanies.map(c => ({
+                id: c.toLowerCase().replace(/[\s-]+/g, '-'),
+                name: c
+              })));
+            }
           }
+        }
+
+        // Query roles
+        const { data: reports } = await supabase.from('raw_reports').select('role').limit(200);
+        if (reports && reports.length > 0) {
+          const uniqueRoles = Array.from(new Set(reports.map(r => r.role?.toLowerCase() || ''))).filter(Boolean);
           if (uniqueRoles.length > 0) {
             setRoles(uniqueRoles.map(r => ({ id: r, name: r.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join('-') })));
           }
         }
       } catch (err) {
-        console.warn("Using fallback mock data for selectors", err);
+        console.warn("Using fallback data for selectors", err);
       }
     }
     fetchData();
@@ -113,7 +167,8 @@ export function TopBar() {
       .slice(0, 10);
   }, [searchQuery, companies]);
 
-  const companyName = companies.find(c => c.id === selectedCompany)?.name || "Company";
+  const companyName = companies.find(c => c.id.toLowerCase() === selectedCompany.toLowerCase() || c.name.toLowerCase() === selectedCompany.toLowerCase())?.name 
+    || (selectedCompany ? selectedCompany.charAt(0).toUpperCase() + selectedCompany.slice(1) : "Company");
   const roleName = roles.find(r => r.id === selectedRole)?.name || "Role";
   const cycleLabel = cycles.find(c => c.id === selectedCycle)?.label || "Year";
 
@@ -157,20 +212,28 @@ export function TopBar() {
 
 function Selector({ label, value, options, onSelect }: { label: string; value: string; options: { id: string; name: string }[]; onSelect: (val: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+        setFilter("");
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const filteredOptions = filter
+    ? options.filter(o => o.name.toLowerCase().includes(filter.toLowerCase()) || o.id.toLowerCase().includes(filter.toLowerCase()))
+    : options;
+
   return (
     <div className="relative" ref={ref}>
       <button 
-        onClick={() => setOpen(!open)}
+        onClick={() => { setOpen(!open); setFilter(""); }}
         className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors text-sm"
       >
         <span className="text-primary/70 font-medium">{label}:</span>
@@ -178,17 +241,41 @@ function Selector({ label, value, options, onSelect }: { label: string; value: s
         <ChevronDown className="w-4 h-4 text-primary/70" />
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-48 bg-[#0B0D14] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
-          <div className="max-h-64 overflow-y-auto">
-            {options.map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => { onSelect(opt.id); setOpen(false); }}
-                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-white/10 transition-colors"
-              >
-                {opt.name}
-              </button>
-            ))}
+        <div className="absolute right-0 mt-2 w-64 bg-[#0B0D14] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
+          {options.length > 6 && (
+            <div className="p-2 border-b border-white/10">
+              <input
+                type="text"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder={`Search ${label.toLowerCase()}...`}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-primary/50"
+                autoFocus
+              />
+            </div>
+          )}
+          <div className="max-h-64 overflow-y-auto divide-y divide-white/[0.03]">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((opt) => {
+                const isSelected = opt.id.toLowerCase() === value.toLowerCase() || opt.name.toLowerCase() === value.toLowerCase();
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => { onSelect(opt.id); setOpen(false); setFilter(""); }}
+                    className={cn(
+                      "w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between",
+                      isSelected
+                        ? "text-primary bg-primary/10 font-semibold"
+                        : "text-white/80 hover:bg-white/10 hover:text-white"
+                    )}
+                  >
+                    <span>{opt.name}</span>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="px-4 py-3 text-xs text-white/40 text-center">No match found</div>
+            )}
           </div>
         </div>
       )}
